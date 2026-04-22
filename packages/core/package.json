@@ -1,0 +1,56 @@
+{
+  "name": "@anyaitools/core",
+  "version": "3.3.27",
+  "type": "module",
+  "description": "Core logic for the Any AI Tools workspace across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "codex",
+    "claude",
+    "claude-code",
+    "gemini",
+    "gemini-cli",
+    "opencode",
+    "openclaw",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "api",
+    "config",
+    "manager"
+  ],
+  "author": "2ue",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/2ue/anyaitools.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/2ue/anyaitools#readme",
+  "bugs": {
+    "url": "https://github.com/2ue/anyaitools/issues"
+  },
+  "dependencies": {
+    "@anyaitools/types": "workspace:*",
+    "@iarna/toml": "^2.2.5",
+    "proper-lockfile": "^4.1.2",
+    "webdav": "^5.8.0"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

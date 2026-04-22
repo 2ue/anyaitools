@@ -1,0 +1,411 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ============================================================================
+  # 阶段 1: 并行构建所有产物
+  # ============================================================================
+
+  build-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.6'
+          package-manager-cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages (exclude desktop)
+        run: pnpm build
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Verify version match
+        run: |
+          CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          TAG_VERSION="${{ steps.version.outputs.VERSION }}"
+
+          if [ "$CLI_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch!"
+            echo "Tag: $TAG_VERSION"
+            echo "CLI: $CLI_VERSION"
+            exit 1
+          fi
+
+      - name: Upload CLI build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-build
+          path: |
+            packages/cli/dist
+            packages/cli/package.json
+            packages/cli/README.md
+
+  build-desktop-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.6'
+          package-manager-cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Types module
+        run: |
+          cd packages/types
+          pnpm build
+
+      - name: Build Core module
+        run: |
+          cd packages/core
+          pnpm build
+
+      - name: Build Desktop app
+        run: |
+          cd packages/desktop
+          pnpm build
+
+      - name: Package for macOS
+        run: |
+          cd packages/desktop
+          pnpm build:electron:ci
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-mac
+          path: |
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.dmg.blockmap
+            packages/desktop/release/*.zip
+            packages/desktop/release/*-mac.yml
+
+  build-desktop-win:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.6'
+          package-manager-cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          # 使用镜像加速 Electron 下载，避免超时
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+      - name: Build Types module
+        run: |
+          cd packages/types
+          pnpm build
+
+      - name: Build Core module
+        run: |
+          cd packages/core
+          pnpm build
+
+      - name: Build Desktop app
+        run: |
+          cd packages/desktop
+          pnpm build
+
+      - name: Package for Windows
+        run: |
+          cd packages/desktop
+          pnpm build:electron:ci
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-win
+          path: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.exe.blockmap
+            packages/desktop/release/latest.yml
+
+  # ============================================================================
+  # 阶段 2: 发布 npm 包
+  # ============================================================================
+
+  publish-npm:
+    needs: [build-cli, build-desktop-mac, build-desktop-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.11.0'
+          package-manager-cache: false
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Pin npm 11.5.1 for OIDC trusted publishing
+        run: npm install -g npm@11.5.1
+
+      - name: Download CLI build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-build
+          path: packages/cli
+
+      - name: Verify aicoding version match
+        run: |
+          AICODING_VERSION=$(node -p "require('./packages/aicoding/package.json').version")
+          TAG_VERSION="${{ steps.version.outputs.VERSION }}"
+
+          if [ "$AICODING_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch!"
+            echo "Tag: $TAG_VERSION"
+            echo "aicoding: $AICODING_VERSION"
+            exit 1
+          fi
+
+      - name: Prepare CLI package for publishing
+        run: |
+          cd packages/cli
+          # 备份原始 package.json
+          cp package.json package.json.bak
+          # 修改包名为 anyaitools，删除 @anyaitools/core 和 workspace 依赖（源码已编译到 dist）
+          node -e "
+            const pkg = require('./package.json');
+            pkg.name = 'anyaitools';
+            delete pkg.dependencies['@anyaitools/core'];
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Publish anyaitools CLI (OIDC trusted publishing)
+        run: |
+          cd packages/cli
+          if npm view anyaitools@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
+            echo "anyaitools@${{ steps.version.outputs.VERSION }} already published, skip"
+          else
+            npm publish --access public --provenance
+          fi
+
+      - name: Publish aicoding (OIDC trusted publishing)
+        run: |
+          cd packages/aicoding
+          if npm view @2ue/aicoding@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
+            echo "@2ue/aicoding@${{ steps.version.outputs.VERSION }} already published, skip"
+          else
+            npm publish --access public --provenance
+          fi
+
+      - name: Restore original package.json
+        if: always()
+        run: |
+          cd packages/cli
+          mv package.json.bak package.json
+
+  # ============================================================================
+  # 阶段 3: 创建 GitHub Release 并上传所有产物
+  # ============================================================================
+
+  create-release:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.6'
+          package-manager-cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Update CHANGELOG.md from changesets (with fallback)
+        run: pnpm run changelog:consume
+
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          # 提取当前版本的 changelog（从版本标题到下一个版本标题之间的内容）
+          # 匹配 "## [x.y.z]" 格式，提取到下一个 "## [" 之前的所有内容
+          CHANGELOG=$(awk "/^## \[${VERSION}\]/,/^## \[/" CHANGELOG.md | sed '1!{/^## \[/d;}')
+
+          # 如果提取失败或为空，使用默认消息
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="查看完整更新日志：[CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)"
+          fi
+
+          # 保存到 GitHub Output（处理多行内容）
+          {
+            echo 'content<<EOF'
+            echo "$CHANGELOG"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Display structure of downloaded files
+        run: ls -R
+
+      - name: Create GitHub Release with all artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 📝 更新内容
+
+            ${{ steps.changelog.outputs.content }}
+
+            ---
+
+            ## 📦 npm 包已发布
+
+            - [anyaitools@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/anyaitools)
+            - [@2ue/aicoding@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/@2ue/aicoding)
+
+            ## 📥 CLI 安装
+
+            ```bash
+            npm install -g anyaitools
+            ```
+
+            ## 🚀 CLI 使用
+
+            ```bash
+            # 进入交互式菜单
+            anyaitools
+
+            # 管理 Codex 服务商
+            anyaitools cx
+
+            # 管理 Claude Code 服务商
+            anyaitools cc
+            ```
+
+            ## 🖥️ Desktop 应用下载
+
+            ### macOS
+            - **Intel (x64)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-x64.dmg`
+            - **Apple Silicon (ARM64)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg`
+            - **Universal (Intel + Apple Silicon)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-universal.dmg`
+
+            下载对应的 `.dmg` 文件，双击安装即可。
+
+            ### Windows
+            - **64-bit**: `anyaitools-${{ steps.version.outputs.VERSION }}-windows-x64.exe`
+
+            下载 `.exe` 文件，双击安装即可。
+
+            ---
+
+            完整更新日志：[CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          files: |
+            desktop-mac/*.dmg
+            desktop-mac/*.dmg.blockmap
+            desktop-mac/*.zip
+            desktop-mac/*-mac.yml
+            desktop-win/*.exe
+            desktop-win/*.exe.blockmap
+            desktop-win/latest.yml
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync CHANGELOG.md back to main (best effort)
+        if: always()
+        continue-on-error: true
+        run: |
+          cp CHANGELOG.md /tmp/CHANGELOG.generated.md
+          cp -R .changeset /tmp/changeset.generated
+
+          git fetch origin main
+          git checkout -B changelog-sync origin/main
+          cp /tmp/CHANGELOG.generated.md CHANGELOG.md
+          rm -rf .changeset
+          cp -R /tmp/changeset.generated .changeset
+
+          if git diff --quiet -- CHANGELOG.md .changeset; then
+            echo "CHANGELOG.md and .changeset already up to date"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md .changeset
+          git commit -m "docs(changelog): update for v${{ steps.version.outputs.VERSION }} [skip ci]"
+          git push origin HEAD:main

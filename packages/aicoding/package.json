@@ -1,0 +1,36 @@
+{
+  "name": "@2ue/aicoding",
+  "version": "3.3.27",
+  "description": "一键配置 OKMCode 到 Codex、OpenCode、OpenClaw",
+  "type": "module",
+  "bin": {
+    "aicoding": "./bin/aicoding.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "keywords": [
+    "okmcode",
+    "codex",
+    "opencode",
+    "openclaw",
+    "ai",
+    "config",
+    "aicoding"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "anyaitools",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/2ue/anyaitools.git",
+    "directory": "packages/aicoding"
+  },
+  "homepage": "https://github.com/2ue/anyaitools/tree/main/packages/aicoding",
+  "dependencies": {
+    "inquirer": "^8.2.6"
+  }
+}

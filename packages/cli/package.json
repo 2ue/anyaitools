@@ -1,0 +1,65 @@
+{
+  "name": "anyaitools",
+  "version": "3.3.27",
+  "type": "module",
+  "description": "CLI for the Any AI Tools workspace, managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
+  "main": "./dist/index.js",
+  "bin": {
+    "aat": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "NODE_ENV=development tsx src/index.ts",
+    "test": "tsx --test src/utils/*.test.ts src/commands/sync/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "codex",
+    "claude",
+    "claude-code",
+    "gemini",
+    "gemini-cli",
+    "opencode",
+    "openclaw",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "api",
+    "config",
+    "manager",
+    "cli"
+  ],
+  "author": "2ue",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/2ue/anyaitools.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/2ue/anyaitools#readme",
+  "bugs": {
+    "url": "https://github.com/2ue/anyaitools/issues"
+  },
+  "dependencies": {
+    "@anyaitools/core": "workspace:*",
+    "@iarna/toml": "^2.2.5",
+    "boxen": "^8.0.1",
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "gradient-string": "^3.0.0",
+    "inquirer": "^8.2.6",
+    "proper-lockfile": "^4.1.2",
+    "webdav": "^5.8.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8.2.5",
+    "tsx": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
