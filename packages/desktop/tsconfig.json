@@ -10,7 +10,8 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "baseUrl": ".",
     "paths": {
-      "@anyaitools/types": ["../types/dist"]
+      "@anyaitools/core": ["../core/dist/index.d.ts"],
+      "@anyaitools/types": ["../types/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*"],
