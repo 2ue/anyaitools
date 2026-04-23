@@ -1,6 +1,6 @@
 {
   "name": "anyaitools-workspace",
-  "version": "3.3.27",
+  "version": "3.3.28",
   "private": true,
   "description": "Any AI tools workspace for managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
   "scripts": {

@@ -1,6 +1,6 @@
 {
   "name": "anyaitools",
-  "version": "3.3.27",
+  "version": "3.3.28",
   "type": "module",
   "description": "CLI for the Any AI Tools workspace, managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
   "main": "./dist/index.js",
