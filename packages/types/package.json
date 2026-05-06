@@ -1,6 +1,6 @@
 {
   "name": "@anyaitools/types",
-  "version": "3.1.2",
+  "version": "0.0.1",
   "type": "module",
   "description": "Shared TypeScript type definitions for anyaitools",
   "main": "./dist/index.js",
@@ -28,4 +28,3 @@
     "url": "https://github.com/2ue/anyaitools/issues"
   }
 }
-

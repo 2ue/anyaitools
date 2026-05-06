@@ -1,6 +1,6 @@
 {
   "name": "@2ue/aicoding",
-  "version": "3.3.28",
+  "version": "0.0.1",
   "description": "一键配置 OKMCode 到 Codex、OpenCode、OpenClaw",
   "type": "module",
   "bin": {
