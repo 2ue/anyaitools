@@ -64,6 +64,11 @@ interface CodexSandboxWorkspaceWrite {
 }
 
 interface CodexProfile {
+  model_provider?: string
+  model?: string
+  model_reasoning_effort?: string
+  model_verbosity?: string
+  plan_mode_reasoning_effort?: string
   approval_policy?: string
   sandbox_mode?: string
   [key: string]: unknown
@@ -231,6 +236,40 @@ function buildManagedProvider(provider: Provider, providerKey: string): CodexMod
   }
 }
 
+function syncActiveProfile(config: CodexConfig, providerKey: string, provider: Provider): void {
+  const activeProfileName =
+    typeof config.profile === 'string' && config.profile.trim().length > 0 ? config.profile : null
+  if (!activeProfileName) return
+
+  const profiles =
+    config.profiles && typeof config.profiles === 'object' && !Array.isArray(config.profiles)
+      ? config.profiles
+      : null
+  if (!profiles) return
+
+  const activeProfile =
+    profiles[activeProfileName] &&
+    typeof profiles[activeProfileName] === 'object' &&
+    !Array.isArray(profiles[activeProfileName])
+      ? profiles[activeProfileName]
+      : null
+  if (!activeProfile) return
+
+  activeProfile.model_provider = providerKey
+  activeProfile.model = provider.model || config.model || activeProfile.model || 'gpt-5.4'
+
+  if (typeof config.model_reasoning_effort === 'string') {
+    activeProfile.model_reasoning_effort = config.model_reasoning_effort
+  }
+  if (typeof config.model_verbosity === 'string') {
+    activeProfile.model_verbosity = config.model_verbosity
+  }
+  if (typeof (config as Record<string, unknown>).plan_mode_reasoning_effort === 'string') {
+    activeProfile.plan_mode_reasoning_effort = (config as Record<string, string>)
+      .plan_mode_reasoning_effort
+  }
+}
+
 function writeCodexConfigOverwrite(provider: Provider): void {
   ensureDir(getCodexDir())
 
@@ -246,6 +285,7 @@ function writeCodexConfigOverwrite(provider: Provider): void {
   nextConfig.model_providers = {
     [providerKey]: buildManagedProvider(provider, providerKey),
   }
+  syncActiveProfile(nextConfig, providerKey, provider)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fs.writeFileSync(configPath, stringifyToml(nextConfig as any), { mode: 0o600 })
@@ -268,6 +308,7 @@ function writeCodexConfigMerge(provider: Provider): void {
 
   nextConfig.model_provider = providerKey
   nextConfig.model = provider.model || nextConfig.model || 'gpt-5.4'
+  syncActiveProfile(nextConfig, providerKey, provider)
 
   const existingProviders =
     nextConfig.model_providers &&

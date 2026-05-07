@@ -223,6 +223,66 @@ describe('Codex Writer', () => {
       expect(fs.existsSync(`${authPath}.bak`)).toBe(false)
     })
 
+    it('should sync the active profile provider fields in merge mode', () => {
+      const configPath = getCodexConfigPath()
+      fs.mkdirSync(path.dirname(configPath), { recursive: true })
+
+      fs.writeFileSync(
+        configPath,
+        TOML.stringify({
+          profile: 'auto-max',
+          model: 'gpt-5.5',
+          model_reasoning_effort: 'xhigh',
+          model_verbosity: 'high',
+          plan_mode_reasoning_effort: 'xhigh',
+          model_provider: 'gmn',
+          profiles: {
+            'auto-max': {
+              approval_policy: 'never',
+              sandbox_mode: 'workspace-write',
+              model_provider: 'gmn',
+              model: 'gpt-5.5',
+              model_reasoning_effort: 'xhigh',
+              plan_mode_reasoning_effort: 'xhigh',
+              model_verbosity: 'high',
+            },
+          },
+          model_providers: {
+            gmn: {
+              name: 'gmn',
+              base_url: 'https://gmn.example.com',
+              wire_api: 'responses',
+              requires_openai_auth: true,
+            },
+          },
+        } as any),
+        'utf-8'
+      )
+
+      const provider: Provider = {
+        id: 'test-id-active-profile',
+        name: 'OKMCode',
+        type: 'codex',
+        baseUrl: 'https://okmcode.com',
+        apiKey: 'test-api-key-123',
+        createdAt: Date.now(),
+      }
+
+      writeCodexConfig(provider)
+
+      const configContent = fs.readFileSync(configPath, 'utf-8')
+      const config: any = TOML.parse(configContent)
+
+      expect(config.model_provider).toBe('okmcode')
+      expect(config.profiles['auto-max'].model_provider).toBe('okmcode')
+      expect(config.profiles['auto-max'].model).toBe('gpt-5.5')
+      expect(config.profiles['auto-max'].model_reasoning_effort).toBe('xhigh')
+      expect(config.profiles['auto-max'].plan_mode_reasoning_effort).toBe('xhigh')
+      expect(config.profiles['auto-max'].model_verbosity).toBe('high')
+      expect(config.model_providers.gmn).toBeDefined()
+      expect(config.model_providers.okmcode).toBeDefined()
+    })
+
     it('should overwrite config.toml and auth.json in overwrite mode', () => {
       const configPath = getCodexConfigPath()
       const authPath = getCodexAuthPath()
