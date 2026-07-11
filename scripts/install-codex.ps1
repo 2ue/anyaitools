@@ -374,13 +374,15 @@ function Write-CodexConfig {
   New-Item -ItemType Directory -Force -Path $codexDir | Out-Null
 
   $configContent = @"
-model = "gpt-5.4"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
-disable_response_storage = true
+plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "auto"
+model_verbosity = "high"
+personality = "pragmatic"
 sandbox_mode = "danger-full-access"
-windows_wsl_setup_acknowledged = true
 approval_policy = "never"
-profile = "auto-max"
 file_opener = "vscode"
 model_provider = "$CodexProviderKey"
 web_search = "cached"
@@ -399,22 +401,15 @@ ignore_default_excludes = false
 [sandbox_workspace_write]
 network_access = true
 
+[windows]
+sandbox = "elevated"
+
 [features]
-plan_tool = true
-apply_patch_freeform = true
-view_image_tool = true
-unified_exec = false
-streamable_shell = false
-rmcp_client = true
-elevated_windows_sandbox = true
-
-[profiles.auto-max]
-approval_policy = "never"
-sandbox_mode = "workspace-write"
-
-[profiles.review]
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
+multi_agent = true
+shell_tool = true
+shell_snapshot = true
+fast_mode = true
+personality = true
 
 [notice]
 hide_gpt5_1_migration_prompt = true

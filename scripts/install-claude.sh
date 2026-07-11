@@ -340,6 +340,7 @@ write_claude_config() {
 
   cat >"$config_path" <<EOF
 {
+  "model": "sonnet",
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "${API_KEY}",
     "ANTHROPIC_BASE_URL": "${BASE_URL}",

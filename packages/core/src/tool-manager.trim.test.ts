@@ -33,14 +33,14 @@ describe('ToolManager trim inputs', () => {
       desc: '  desc  ',
       baseUrl: '  https://okmcode.com  ',
       apiKey: '  sk-abc  ',
-      model: '  gpt-5.3-codex  ',
+      model: '  custom-model  ',
     })
 
     expect(added.name).toBe(seed + '-A')
     expect(added.desc).toBe('desc')
     expect(added.baseUrl).toBe('https://okmcode.com')
     expect(added.apiKey).toBe('sk-abc')
-    expect(added.model).toBe('gpt-5.3-codex')
+    expect(added.model).toBe('custom-model')
 
     const found = manager.findByName(`  ${seed.toUpperCase()}-a  `)
     expect(found?.id).toBe(added.id)
@@ -101,6 +101,10 @@ describe('ToolManager trim inputs', () => {
       configPath,
       TOML.stringify({
         custom_field: 'keep-me',
+        profile: 'legacy-profile',
+        features: {
+          plan_tool: true,
+        },
         model_providers: {
           legacy: {
             name: 'legacy',
@@ -135,6 +139,8 @@ describe('ToolManager trim inputs', () => {
     const mergedAuth = JSON.parse(fs.readFileSync(authPath, 'utf-8'))
 
     expect(mergedConfig.custom_field).toBe('keep-me')
+    expect(mergedConfig.profile).toBeUndefined()
+    expect(mergedConfig.features.plan_tool).toBeUndefined()
     expect(mergedConfig.model_providers.legacy).toBeDefined()
     expect(mergedConfig.model_providers.okmcode.base_url).toBe('https://okmcode.com')
     expect(mergedAuth.CUSTOM_FIELD).toBe('keep-me')
@@ -174,6 +180,24 @@ describe('ToolManager trim inputs', () => {
     expect(overwrittenConfig.model_providers.okmcode.base_url).toBe('https://okmcode.com')
     expect(overwrittenAuth.CUSTOM_FIELD).toBeUndefined()
     expect(overwrittenAuth.OPENAI_API_KEY).toBe('sk-overwrite')
+  })
+
+  it('should not mark a provider current when its target config cannot be parsed', () => {
+    const configPath = getCodexConfigPath()
+    fs.mkdirSync(path.dirname(configPath), { recursive: true })
+    fs.writeFileSync(configPath, 'model = "unterminated\n', 'utf-8')
+
+    const manager = createCodexManager()
+    const currentProviderIdBefore = manager.getCurrent()?.id
+    const provider = manager.add({
+      name: `invalid-switch-${Date.now()}`,
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-invalid-switch',
+    })
+
+    expect(() => manager.switch(provider.id)).toThrow('已中止切换以避免覆盖')
+    expect(manager.getCurrent()?.id).toBe(currentProviderIdBefore)
+    expect(manager.get(provider.id).lastUsedAt).toBeUndefined()
   })
 
   it('should allow editing the active provider without applying an intermediate write', () => {
@@ -237,5 +261,32 @@ describe('ToolManager trim inputs', () => {
     )
     expect(overwrittenAuth.CUSTOM_FIELD).toBeUndefined()
     expect(overwrittenAuth.OPENAI_API_KEY).toBe('sk-after')
+  })
+
+  it('should roll back active provider edits when the target config write fails', () => {
+    const configPath = getCodexConfigPath()
+    fs.mkdirSync(path.dirname(configPath), { recursive: true })
+
+    const manager = createCodexManager()
+    const provider = manager.add({
+      name: `rollback-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      baseUrl: 'https://before.example.com',
+      apiKey: 'sk-before',
+    })
+    manager.switch(provider.id, { mode: 'overwrite' })
+    fs.writeFileSync(configPath, 'model = "unterminated\n', 'utf-8')
+
+    expect(() =>
+      manager.edit(provider.id, {
+        baseUrl: 'https://after.example.com',
+        apiKey: 'sk-after',
+      })
+    ).toThrow('已中止切换以避免覆盖')
+
+    const restoredProvider = manager.get(provider.id)
+    expect(restoredProvider.baseUrl).toBe('https://before.example.com')
+    expect(restoredProvider.apiKey).toBe('sk-before')
+    expect(manager.getCurrent()?.id).toBe(provider.id)
+    expect(fs.readFileSync(configPath, 'utf-8')).toBe('model = "unterminated\n')
   })
 })

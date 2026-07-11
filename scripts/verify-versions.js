@@ -22,6 +22,8 @@ const packagePaths = [
   path.join(rootDir, 'packages', 'core', 'package.json'),
   path.join(rootDir, 'packages', 'cli', 'package.json'),
   path.join(rootDir, 'packages', 'desktop', 'package.json'),
+  path.join(rootDir, 'packages', 'aicoding', 'package.json'),
+  path.join(rootDir, 'packages', 'types', 'package.json'),
 ]
 
 console.log('🔍 验证版本号一致性...\n')

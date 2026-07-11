@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify workspace versions
+        run: pnpm verify:versions
+
       - name: Build packages (exclude desktop)
         run: pnpm build
 

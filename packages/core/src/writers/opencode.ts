@@ -9,9 +9,9 @@ import { replaceVariables, deepMerge } from '../utils/template.js'
 
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json'
 const OPENCODE_PROVIDER_KEY = 'openai'
-const OPENCODE_MODEL = 'openai/gpt-5.4'
-const OPENCODE_MODEL_KEY = 'gpt-5.4'
-const OPENCODE_SECONDARY_MODEL_KEY = 'gpt-5.3-codex'
+const OPENCODE_MODEL = 'openai/gpt-5.5'
+const OPENCODE_MODEL_KEY = 'gpt-5.5'
+const DEPRECATED_MANAGED_MODEL_KEYS = ['gpt-5.4', 'gpt-5.3-codex', 'gpt-5.2-codex']
 
 interface OpenCodeProviderOptions {
   baseURL?: string
@@ -61,19 +61,7 @@ function resolveTemplatePath(relativePath: string): string | null {
 
 const DEFAULT_MODELS: Record<string, unknown> = {
   [OPENCODE_MODEL_KEY]: {
-    name: 'GPT-5.4',
-    options: {
-      store: false,
-    },
-    variants: {
-      low: {},
-      medium: {},
-      high: {},
-      xhigh: {},
-    },
-  },
-  [OPENCODE_SECONDARY_MODEL_KEY]: {
-    name: 'GPT-5.3 Codex',
+    name: 'GPT-5.5',
     options: {
       store: false,
     },
@@ -159,23 +147,21 @@ function enforceAgentStoreFalse(agent: unknown): Record<string, unknown> {
   })
 }
 
-function enforceModelStoreFalse(models: unknown): Record<string, unknown> {
+function enforceModelStoreFalse(
+  models: unknown,
+  options: { removeDeprecatedManaged?: boolean } = {}
+): Record<string, unknown> {
   const base = models && typeof models === 'object' && !Array.isArray(models) ? (models as any) : {}
   const mergedModels = deepMerge<Record<string, unknown>>(DEFAULT_MODELS, base)
 
+  if (options.removeDeprecatedManaged !== false) {
+    for (const key of DEPRECATED_MANAGED_MODEL_KEYS) {
+      delete mergedModels[key]
+    }
+  }
+
   return deepMerge<Record<string, unknown>>(mergedModels, {
     [OPENCODE_MODEL_KEY]: {
-      options: {
-        store: false,
-      },
-      variants: {
-        low: {},
-        medium: {},
-        high: {},
-        xhigh: {},
-      },
-    },
-    [OPENCODE_SECONDARY_MODEL_KEY]: {
       options: {
         store: false,
       },
@@ -229,7 +215,8 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
   const existingProvider = mergedConfig.provider?.[OPENCODE_PROVIDER_KEY]
 
   const models = enforceModelStoreFalse(
-    meta?.models || existingProvider?.models || templateProvider?.models || DEFAULT_MODELS
+    meta?.models || existingProvider?.models || templateProvider?.models || DEFAULT_MODELS,
+    { removeDeprecatedManaged: !meta?.models }
   )
 
   const providerConfig: OpenCodeProvider = deepMerge<OpenCodeProvider>(templateProvider || {}, {

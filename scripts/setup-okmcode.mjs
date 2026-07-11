@@ -14,11 +14,20 @@
 
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import {
   createClaudeManager,
   createCodexManager,
   createGeminiManager,
   createOpenCodeManager,
+  getAnyAIToolsDir,
+  getClaudeConfigPath,
+  getCodexAuthPath,
+  getCodexConfigPath,
+  getGeminiEnvPath,
+  getGeminiSettingsPath,
+  getOpenCodeConfigPath,
 } from '../packages/core/dist/index.js'
 
 const PROVIDER_NAME = 'OKMCode'
@@ -30,11 +39,65 @@ const OKMCODE_BASE_URLS = {
 }
 
 const tools = [
-  { name: 'Claude Code', manager: createClaudeManager(), baseUrl: OKMCODE_BASE_URLS.claude },
-  { name: 'Codex', manager: createCodexManager(), baseUrl: OKMCODE_BASE_URLS.codex },
-  { name: 'Gemini CLI', manager: createGeminiManager(), baseUrl: OKMCODE_BASE_URLS.gemini },
-  { name: 'OpenCode', manager: createOpenCodeManager(), baseUrl: OKMCODE_BASE_URLS.opencode },
+  {
+    name: 'Claude Code',
+    manager: createClaudeManager(),
+    baseUrl: OKMCODE_BASE_URLS.claude,
+    targetFiles: [path.join(getAnyAIToolsDir(), 'claude.json'), getClaudeConfigPath()],
+  },
+  {
+    name: 'Codex',
+    manager: createCodexManager(),
+    baseUrl: OKMCODE_BASE_URLS.codex,
+    targetFiles: [
+      path.join(getAnyAIToolsDir(), 'codex.json'),
+      getCodexConfigPath(),
+      getCodexAuthPath(),
+    ],
+  },
+  {
+    name: 'Gemini CLI',
+    manager: createGeminiManager(),
+    baseUrl: OKMCODE_BASE_URLS.gemini,
+    targetFiles: [
+      path.join(getAnyAIToolsDir(), 'gemini.json'),
+      getGeminiSettingsPath(),
+      getGeminiEnvPath(),
+    ],
+  },
+  {
+    name: 'OpenCode',
+    manager: createOpenCodeManager(),
+    baseUrl: OKMCODE_BASE_URLS.opencode,
+    targetFiles: [path.join(getAnyAIToolsDir(), 'opencode.json'), getOpenCodeConfigPath()],
+  },
 ]
+
+function backupTargetsOrThrow(targetFiles) {
+  return targetFiles.map((filePath) => {
+    const existed = fs.existsSync(filePath)
+    const backupPath = `${filePath}.bak`
+    if (existed) {
+      try {
+        fs.copyFileSync(filePath, backupPath)
+        fs.chmodSync(backupPath, 0o600)
+      } catch (error) {
+        throw new Error(`备份失败，已中止后续写入（${filePath}）: ${error.message}`)
+      }
+    }
+    return { filePath, backupPath, existed }
+  })
+}
+
+function rollbackTargets(entries) {
+  for (const entry of entries) {
+    if (entry.existed) {
+      fs.copyFileSync(entry.backupPath, entry.filePath)
+    } else if (fs.existsSync(entry.filePath)) {
+      fs.rmSync(entry.filePath, { force: true })
+    }
+  }
+}
 
 async function main() {
   console.log('🚀 OKMCode 快速配置工具\n')
@@ -55,8 +118,10 @@ async function main() {
   console.log('\n开始配置...\n')
 
   // 2. 配置所有工具
-  for (const { name, manager, baseUrl } of tools) {
+  for (const { name, manager, baseUrl, targetFiles } of tools) {
+    let backupEntries = []
     try {
+      backupEntries = backupTargetsOrThrow(targetFiles)
       const existing = manager.findByName(PROVIDER_NAME)
 
       const provider = existing
@@ -66,7 +131,12 @@ async function main() {
       manager.switch(provider.id, { mode: 'overwrite' })
       console.log(`✅ ${name}`)
     } catch (error) {
-      console.error(`❌ ${name}: ${error.message}`)
+      try {
+        rollbackTargets(backupEntries)
+        console.error(`❌ ${name}: ${error.message}（已回滚）`)
+      } catch (rollbackError) {
+        console.error(`❌ ${name}: ${error.message}；回滚失败: ${rollbackError.message}`)
+      }
     }
   }
 

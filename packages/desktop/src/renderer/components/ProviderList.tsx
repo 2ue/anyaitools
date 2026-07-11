@@ -1,9 +1,11 @@
-import { Play, Edit2, Trash2, Copy } from 'lucide-react'
+import { Check, Copy, Edit2, Globe, Play, Trash2 } from 'lucide-react'
 import type { Provider } from '@anyaitools/types'
+import { BRAND_COLORS, type ToolType } from '../styles/brand-colors'
 
 interface Props {
   providers: Provider[]
   currentProviderId: string | undefined
+  tool: ToolType
   onSwitch: (id: string) => void
   onEdit: (provider: Provider) => void
   onDelete: (id: string, name: string) => void
@@ -13,6 +15,7 @@ interface Props {
 export default function ProviderList({
   providers,
   currentProviderId,
+  tool,
   onSwitch,
   onEdit,
   onDelete,
@@ -20,78 +23,99 @@ export default function ProviderList({
 }: Props) {
   if (providers.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">暂无服务商</p>
-        <p className="text-sm text-gray-400 mt-2">点击"添加服务商"开始使用</p>
+      <div className="border-2 border-dashed border-gray-200 py-12 text-center rounded-lg">
+        <Globe className="mx-auto mb-3 h-7 w-7 text-gray-300" />
+        <p className="font-medium text-gray-500">暂无服务商</p>
+        <p className="mt-1 text-sm text-gray-400">点击"添加"按钮创建配置</p>
       </div>
     )
   }
 
+  const theme = BRAND_COLORS[tool]
+
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">所有服务商</h2>
-      <div className="space-y-3">
-        {providers.map((provider) => {
-          const isCurrent = provider.id === currentProviderId
+    <div className="space-y-2">
+      {providers.map((provider) => {
+        const isCurrent = provider.id === currentProviderId
 
-          return (
-            <div
-              key={provider.id}
-              className={`bg-white rounded-lg border p-4 transition-all ${
-                isCurrent ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-base font-medium text-gray-900">{provider.name}</h3>
-                    {isCurrent && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        激活中
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 font-mono">{provider.baseUrl}</p>
-                  {provider.desc && <p className="text-xs text-gray-500 mt-1">{provider.desc}</p>}
-                </div>
-
-                <div className="flex gap-2 ml-4">
-                  {!isCurrent && (
-                    <button
-                      onClick={() => onSwitch(provider.id)}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="切换到此服务商"
+        return (
+          <div
+            key={provider.id}
+            className={`rounded-lg border bg-white p-3 transition-all hover:shadow-sm ${
+              isCurrent
+                ? `${theme.border} ring-1 ${theme.ring}`
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex min-w-0 items-center gap-2">
+                  <h3
+                    className="truncate text-sm font-semibold text-gray-900"
+                    title={provider.name}
+                  >
+                    {provider.name}
+                  </h3>
+                  {isCurrent && (
+                    <span
+                      className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${theme.bgLight} ${theme.textDark}`}
                     >
-                      <Play className="w-4 h-4" />
-                    </button>
+                      <Check className="h-3 w-3" />
+                      激活中
+                    </span>
                   )}
-                  <button
-                    onClick={() => onClone(provider)}
-                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="克隆服务商"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onEdit(provider)}
-                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="编辑服务商"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(provider.id, provider.name)}
-                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="删除服务商"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:gap-3">
+                  <span className="truncate font-mono" title={provider.baseUrl}>
+                    {provider.baseUrl}
+                  </span>
+                  {provider.desc && (
+                    <span
+                      className="truncate sm:border-l sm:border-gray-200 sm:pl-3"
+                      title={provider.desc}
+                    >
+                      {provider.desc}
+                    </span>
+                  )}
                 </div>
               </div>
+
+              <div className="flex flex-shrink-0 items-center gap-1">
+                {!isCurrent && (
+                  <button
+                    onClick={() => onSwitch(provider.id)}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    title="切换到此服务商"
+                  >
+                    <Play className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => onClone(provider)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                  title="克隆服务商"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onEdit(provider)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                  title="编辑服务商"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(provider.id, provider.name)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  title="删除服务商"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

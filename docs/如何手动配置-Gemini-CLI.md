@@ -37,12 +37,13 @@
 ```bash
 GOOGLE_GEMINI_BASE_URL=https://okmcode.com
 GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
-可选模型字段：
+`GEMINI_MODEL` 用来指定默认模型。当前模板使用 Google 官方模型页标记为 Stable 的 `gemini-3.5-flash`：
 
 ```bash
-GEMINI_MODEL=gemini-2.5-pro
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
 ---

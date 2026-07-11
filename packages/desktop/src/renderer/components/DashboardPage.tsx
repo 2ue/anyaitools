@@ -47,27 +47,25 @@ export default function DashboardPage({
   onEnterPage,
 }: DashboardPageProps) {
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[880px] mx-auto p-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl p-1 text-white w-10 h-10 flex items-center justify-center">
-              <span className="text-sm font-bold leading-none">CC</span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-              anyaitools
-            </h1>
+    <div className="flex-1 overflow-y-auto bg-gray-50/50">
+      <div className="mx-auto max-w-[1000px] p-6 lg:p-8">
+        {/* Compact product header */}
+        <div className="mb-8 flex items-center gap-4 border-b border-gray-200 pb-6">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <span className="text-sm font-bold leading-none">AI</span>
           </div>
-          <p className="text-xl text-gray-600">AI 代码助手配置管理工具</p>
-          <p className="text-sm text-gray-500 mt-2">
-            统一管理多个 AI 代码工具的 API 配置，快速切换服务商
-          </p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900">anyaitools</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              AI 代码助手配置管理工具 · 统一管理多个 AI 代码工具的 API 配置
+            </p>
+          </div>
         </div>
 
         {/* AI 代码助手区域 */}
         <div className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <span className="h-4 w-1 rounded-full bg-blue-600" />
             AI 代码助手
           </h2>
           {/* 响应式网格：2个工具显示2列，3+个工具显示3列，自动换行 */}
@@ -141,7 +139,8 @@ export default function DashboardPage({
 
         {/* 配置与工具区域 */}
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <span className="h-4 w-1 rounded-full bg-gray-400" />
             配置与工具
           </h2>
           {/* 响应式网格：自动适应卡片数量 */}

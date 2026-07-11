@@ -12,7 +12,7 @@
  *
  * 策略说明：
  *   - 快捷配置入口统一采用覆盖写入：直接落下托管配置
- *   - 写入前会备份已有目标文件
+ *   - 已存在的目标配置文件写入前会备份为 .bak
  *
  * 依赖：零依赖，只使用 Node.js 内置 API
  */
@@ -31,9 +31,6 @@ const OKMCODE_BASE_URLS = {
 }
 const HOME_DIR = os.homedir()
 
-// 快捷配置入口统一使用覆盖写入
-let OVERWRITE_MODE = true
-
 // ============================================================================
 // 工具函数
 // ============================================================================
@@ -48,29 +45,25 @@ function ensureDir(dirPath) {
 }
 
 /**
- * 深度合并对象
- */
-function deepMerge(target, source) {
-  const result = { ...target }
-
-  for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(target[key] || {}, source[key])
-    } else {
-      result[key] = source[key]
-    }
-  }
-
-  return result
-}
-
-/**
  * 原子性写入文件
  */
 function atomicWrite(filePath, content, mode = 0o600) {
   const tempPath = `${filePath}.tmp`
   fs.writeFileSync(tempPath, content, { mode })
   fs.renameSync(tempPath, filePath)
+}
+
+function backupFileIfExists(filePath, operation) {
+  if (!fs.existsSync(filePath)) return null
+
+  const backupPath = `${filePath}.bak`
+  try {
+    fs.copyFileSync(filePath, backupPath)
+    fs.chmodSync(backupPath, 0o600)
+    return backupPath
+  } catch (error) {
+    throw new Error(`备份失败，已中止后续写入（${operation}）: ${error.message}`)
+  }
 }
 
 // ============================================================================
@@ -85,6 +78,7 @@ function configureClaudeCode(apiKey) {
 
   // 默认配置
   const defaultConfig = {
+    model: 'sonnet',
     env: {
       ANTHROPIC_AUTH_TOKEN: apiKey,
       ANTHROPIC_BASE_URL: OKMCODE_BASE_URLS.claude,
@@ -95,35 +89,11 @@ function configureClaudeCode(apiKey) {
       allow: [],
       deny: [],
     },
+    alwaysThinkingEnabled: true,
   }
 
-  let finalConfig
-
-  if (OVERWRITE_MODE) {
-    // 全覆盖模式：使用默认配置
-    finalConfig = defaultConfig
-  } else {
-    // 保护模式：读取现有配置并深度合并
-    let userConfig = {}
-    if (fs.existsSync(configPath)) {
-      try {
-        userConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      } catch (error) {
-        console.warn(`  ⚠️  无法解析现有配置，将创建新配置`)
-      }
-    }
-
-    // 深度合并：默认配置为基础，用户配置覆盖
-    finalConfig = deepMerge(defaultConfig, userConfig)
-  }
-
-  // 无论哪种模式，都强制更新认证字段
-  finalConfig.env = finalConfig.env || {}
-  finalConfig.env.ANTHROPIC_AUTH_TOKEN = apiKey
-  finalConfig.env.ANTHROPIC_BASE_URL = OKMCODE_BASE_URLS.claude
-
-  // 写入配置
-  atomicWrite(configPath, JSON.stringify(finalConfig, null, 2))
+  backupFileIfExists(configPath, 'standalone.claude.settings.json')
+  atomicWrite(configPath, JSON.stringify(defaultConfig, null, 2))
 }
 
 // ============================================================================
@@ -141,12 +111,26 @@ function configureCodex(apiKey) {
   // 1. 处理 config.toml（先备份，再覆盖写入）
   const minimalConfig = [
     `model_provider = "${providerKey}"`,
-    'model = "gpt-5.2-codex"',
-    'model_reasoning_effort = "high"',
-    'network_access = "enabled"',
-    'disable_response_storage = true',
-    'windows_wsl_setup_acknowledged = true',
+    'model = "gpt-5.5"',
+    'review_model = "gpt-5.5"',
+    'model_reasoning_effort = "xhigh"',
+    'plan_mode_reasoning_effort = "xhigh"',
+    'model_reasoning_summary = "auto"',
     'model_verbosity = "high"',
+    'personality = "pragmatic"',
+    'sandbox_mode = "danger-full-access"',
+    'approval_policy = "never"',
+    'web_search = "cached"',
+    '',
+    '[windows]',
+    'sandbox = "elevated"',
+    '',
+    '[features]',
+    'multi_agent = true',
+    'shell_tool = true',
+    'shell_snapshot = true',
+    'fast_mode = true',
+    'personality = true',
     '',
     `[model_providers.${providerKey}]`,
     `name = "${providerKey}"`,
@@ -156,20 +140,12 @@ function configureCodex(apiKey) {
     '',
   ].join('\n')
 
-  if (fs.existsSync(configPath)) {
-    const backupPath = `${configPath}.bak`
-    fs.copyFileSync(configPath, backupPath)
-    fs.chmodSync(backupPath, 0o600)
-  }
+  backupFileIfExists(configPath, 'standalone.codex.config.toml')
 
   atomicWrite(configPath, minimalConfig)
 
   // 2. 处理 auth.json（先备份，再覆盖写入，仅保留 OPENAI_API_KEY）
-  if (fs.existsSync(authPath)) {
-    const backupPath = `${authPath}.bak`
-    fs.copyFileSync(authPath, backupPath)
-    fs.chmodSync(backupPath, 0o600)
-  }
+  backupFileIfExists(authPath, 'standalone.codex.auth.json')
 
   const auth = { OPENAI_API_KEY: apiKey }
   atomicWrite(authPath, JSON.stringify(auth, null, 2))
@@ -187,59 +163,32 @@ function configureGeminiCLI(apiKey) {
   ensureDir(configDir)
 
   // 1. 处理 settings.json
-  let settings = {}
-
-  if (!OVERWRITE_MODE && fs.existsSync(settingsPath)) {
-    // 保护模式：读取现有配置
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-    } catch (error) {
-      console.warn(`  ⚠️  无法解析 settings.json，将创建新配置`)
-    }
+  const settings = {
+    ide: {
+      enabled: true,
+    },
+    security: {
+      auth: {
+        selectedType: 'gemini-api-key',
+      },
+    },
   }
 
-  // 确保启用 IDE 集成
-  settings.ide = settings.ide || {}
-  if (settings.ide.enabled === undefined) {
-    settings.ide.enabled = true
-  }
-
-  // 配置认证方式
-  settings.security = settings.security || {}
-  settings.security.auth = settings.security.auth || {}
-  if (settings.security.auth.selectedType === undefined) {
-    settings.security.auth.selectedType = 'gemini-api-key'
-  }
-
+  backupFileIfExists(settingsPath, 'standalone.gemini.settings.json')
   atomicWrite(settingsPath, JSON.stringify(settings, null, 2))
 
   // 2. 处理 .env
   const env = {
     GEMINI_API_KEY: apiKey,
-    GEMINI_MODEL: 'gemini-2.5-pro',
+    GEMINI_MODEL: 'gemini-3.5-flash',
     GOOGLE_GEMINI_BASE_URL: OKMCODE_BASE_URLS.gemini,
-  }
-
-  if (!OVERWRITE_MODE && fs.existsSync(envPath)) {
-    // 保护模式：读取现有 .env（保留其他变量）
-    const content = fs.readFileSync(envPath, 'utf-8')
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith('#')) continue
-      const eqIndex = trimmed.indexOf('=')
-      if (eqIndex === -1) continue
-      const key = trimmed.slice(0, eqIndex).trim()
-      const value = trimmed.slice(eqIndex + 1).trim()
-      if (key && !env[key]) {
-        env[key] = value
-      }
-    }
   }
 
   // 写入 .env（按 KEY 排序）
   const lines = Object.keys(env)
     .sort()
     .map((key) => `${key}=${env[key]}`)
+  backupFileIfExists(envPath, 'standalone.gemini.env')
   atomicWrite(envPath, lines.join('\n') + '\n')
 }
 
@@ -262,7 +211,10 @@ function configureOpenCode(apiKey) {
       apiKey: apiKey,
     },
     models: {
-      'gpt-5.2-codex': {
+      'gpt-5.5': {
+        options: {
+          store: false,
+        },
         variants: {
           xhigh: {
             reasoningEffort: 'xhigh',
@@ -289,33 +241,19 @@ function configureOpenCode(apiKey) {
     },
   }
 
-  let config
-
-  if (OVERWRITE_MODE) {
-    // 全覆盖模式：只保留 OKMCode provider
-    config = {
-      $schema: 'https://opencode.ai/config.json',
-      provider: {
-        okmcode: okmcodeProvider,
-      },
-    }
-  } else {
-    // 保护模式：读取现有配置并合并
-    config = {}
-    if (fs.existsSync(configPath)) {
-      try {
-        config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      } catch (error) {
-        console.warn(`  ⚠️  无法解析现有配置，将创建新配置`)
-      }
-    }
-
-    // 合并配置
-    config.$schema = 'https://opencode.ai/config.json'
-    config.provider = config.provider || {}
-    config.provider.okmcode = okmcodeProvider
+  const config = {
+    $schema: 'https://opencode.ai/config.json',
+    model: 'okmcode/gpt-5.5',
+    agent: {
+      build: { options: { store: false } },
+      plan: { options: { store: false } },
+    },
+    provider: {
+      okmcode: okmcodeProvider,
+    },
   }
 
+  backupFileIfExists(configPath, 'standalone.opencode.opencode.json')
   atomicWrite(configPath, JSON.stringify(config, null, 2))
 }
 
@@ -332,7 +270,7 @@ async function main() {
 
   for (const arg of args) {
     if (arg === '--overwrite') {
-      OVERWRITE_MODE = true
+      // 兼容旧参数；当前快捷入口默认即覆盖写入。
     } else if (!arg.startsWith('--')) {
       apiKey = arg
     }

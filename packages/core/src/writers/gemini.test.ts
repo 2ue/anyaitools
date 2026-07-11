@@ -48,7 +48,7 @@ describe('Gemini Writer', () => {
     const rawSettings = fs.readFileSync(settingsPath, 'utf-8')
     const settings = JSON.parse(rawSettings)
 
-    // 默认只在有 defaultModel 时写 model.name
+    // 模型默认通过 .env 的 GEMINI_MODEL 托管。
     expect(settings.model).toBeUndefined()
     // 默认开启 IDE 集成 & 设置认证方式
     expect(settings.ide?.enabled).toBe(true)
@@ -59,6 +59,7 @@ describe('Gemini Writer', () => {
     const envContent = fs.readFileSync(envPath, 'utf-8')
     expect(envContent).toContain('GOOGLE_GEMINI_BASE_URL=https://okmcode.com')
     expect(envContent).toContain('GEMINI_API_KEY=sk-test-123')
+    expect(envContent).toContain('GEMINI_MODEL=gemini-3.5-flash')
   })
 
   it('should respect defaultModel and env in provider.model', () => {
@@ -90,7 +91,7 @@ describe('Gemini Writer', () => {
 
   it('should fallback GEMINI_MODEL from defaultModel when not provided in env', () => {
     const meta = {
-      defaultModel: 'gemini-2.5-pro',
+      defaultModel: 'gemini-custom-model',
     }
 
     const provider: Provider = {
@@ -107,8 +108,7 @@ describe('Gemini Writer', () => {
 
     const envPath = getGeminiEnvPath()
     const envContent = fs.readFileSync(envPath, 'utf-8')
-    // 默认从 defaultModel 填充 GEMINI_MODEL
-    expect(envContent).toContain('GEMINI_MODEL=gemini-2.5-pro')
+    expect(envContent).toContain('GEMINI_MODEL=gemini-custom-model')
   })
 
   it('should preserve existing unrelated fields when updating', () => {
@@ -142,7 +142,7 @@ describe('Gemini Writer', () => {
     expect(envContent).toContain('GEMINI_API_KEY=sk-xyz')
   })
 
-  it('should preserve existing env variables while applying template vars', () => {
+  it('should preserve existing env variables while applying managed template vars', () => {
     const envPath = getGeminiEnvPath()
     fs.mkdirSync(path.dirname(envPath), { recursive: true })
     fs.writeFileSync(
@@ -167,6 +167,71 @@ describe('Gemini Writer', () => {
     expect(nextEnv).toContain('GEMINI_MODEL=gemini-2.0-flash-exp')
     expect(nextEnv).toContain('GOOGLE_GEMINI_BASE_URL=https://okmcode.com')
     expect(nextEnv).toContain('GEMINI_API_KEY=sk-new')
+  })
+
+  it('should let a plain provider model override an existing model', () => {
+    const envPath = getGeminiEnvPath()
+    fs.mkdirSync(path.dirname(envPath), { recursive: true })
+    fs.writeFileSync(envPath, 'GEMINI_MODEL=existing-model\n', 'utf-8')
+
+    const provider: Provider = {
+      id: 'gemini-plain-model',
+      name: 'Custom',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-plain',
+      model: 'explicit-plain-model',
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    writeGeminiConfig(provider)
+
+    expect(fs.readFileSync(envPath, 'utf-8')).toContain('GEMINI_MODEL=explicit-plain-model')
+  })
+
+  it('should let meta.env override an existing model while defaultModel remains a fallback', () => {
+    const envPath = getGeminiEnvPath()
+    fs.mkdirSync(path.dirname(envPath), { recursive: true })
+    fs.writeFileSync(envPath, 'GEMINI_MODEL=existing-model\n', 'utf-8')
+
+    const provider: Provider = {
+      id: 'gemini-meta-env-model',
+      name: 'Custom',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-meta',
+      model: JSON.stringify({
+        defaultModel: 'fallback-model',
+        env: { GEMINI_MODEL: 'explicit-meta-env-model' },
+      }),
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    writeGeminiConfig(provider)
+
+    const envContent = fs.readFileSync(envPath, 'utf-8')
+    expect(envContent).toContain('GEMINI_MODEL=explicit-meta-env-model')
+    expect(envContent).not.toContain('GEMINI_MODEL=fallback-model')
+  })
+
+  it('should preserve an existing model over meta.defaultModel in merge mode', () => {
+    const envPath = getGeminiEnvPath()
+    fs.mkdirSync(path.dirname(envPath), { recursive: true })
+    fs.writeFileSync(envPath, 'GEMINI_MODEL=existing-model\n', 'utf-8')
+
+    const provider: Provider = {
+      id: 'gemini-meta-fallback-model',
+      name: 'Custom',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-meta-fallback',
+      model: JSON.stringify({ defaultModel: 'fallback-model' }),
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    writeGeminiConfig(provider)
+
+    expect(fs.readFileSync(envPath, 'utf-8')).toContain('GEMINI_MODEL=existing-model')
   })
 
   it('should overwrite settings and env in overwrite mode', () => {
@@ -210,5 +275,24 @@ describe('Gemini Writer', () => {
     expect(envContent).not.toContain('GEMINI_MODEL=legacy-model')
     expect(envContent).toContain('GOOGLE_GEMINI_BASE_URL=https://okmcode.com')
     expect(envContent).toContain('GEMINI_API_KEY=sk-overwrite')
+    expect(envContent).toContain('GEMINI_MODEL=gemini-3.5-flash')
+  })
+
+  it('should let meta.defaultModel override the template default in overwrite mode', () => {
+    const provider: Provider = {
+      id: 'gemini-overwrite-default-model',
+      name: 'Custom',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-overwrite-default',
+      model: JSON.stringify({ defaultModel: 'overwrite-meta-model' }),
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    writeGeminiConfig(provider, { mode: 'overwrite' })
+
+    expect(fs.readFileSync(getGeminiEnvPath(), 'utf-8')).toContain(
+      'GEMINI_MODEL=overwrite-meta-model'
+    )
   })
 })

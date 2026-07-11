@@ -49,9 +49,6 @@ const HOME_DIR =
       ? path.join(os.tmpdir(), 'anyaitools-dev')
       : os.homedir()
 
-// 快捷配置入口统一使用覆盖写入
-let OVERWRITE_MODE = true
-
 // ============================================================================
 // 工具函数
 // ============================================================================
@@ -315,23 +312,6 @@ function parsePlatforms(platformArg) {
   return platforms
 }
 
-async function promptMode() {
-  const answers = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'mode',
-      message: '选择写入模式:',
-      choices: [
-        { name: '保护模式（默认，尽量保留现有配置）', value: 'protect' },
-        { name: '全覆盖模式（覆盖配置，谨慎使用）', value: 'overwrite' },
-      ],
-      default: 'protect',
-    },
-  ])
-
-  return answers.mode
-}
-
 async function promptPlatforms() {
   const answers = await inquirer.prompt([
     {
@@ -392,12 +372,26 @@ function configureCodex(apiKey) {
   // 1. 处理 config.toml（先备份，再覆盖写入）
   const minimalConfig = [
     `model_provider = "${providerKey}"`,
-    'model = "gpt-5.4"',
-    'model_reasoning_effort = "high"',
-    'network_access = "enabled"',
-    'disable_response_storage = true',
-    'windows_wsl_setup_acknowledged = true',
+    'model = "gpt-5.5"',
+    'review_model = "gpt-5.5"',
+    'model_reasoning_effort = "xhigh"',
+    'plan_mode_reasoning_effort = "xhigh"',
+    'model_reasoning_summary = "auto"',
     'model_verbosity = "high"',
+    'personality = "pragmatic"',
+    'sandbox_mode = "danger-full-access"',
+    'approval_policy = "never"',
+    'web_search = "cached"',
+    '',
+    '[windows]',
+    'sandbox = "elevated"',
+    '',
+    '[features]',
+    'multi_agent = true',
+    'shell_tool = true',
+    'shell_snapshot = true',
+    'fast_mode = true',
+    'personality = true',
     '',
     `[model_providers.${providerKey}]`,
     `name = "${providerKey}"`,
@@ -441,7 +435,10 @@ function configureOpenCode(apiKey) {
       apiKey: apiKey,
     },
     models: {
-      'gpt-5.4': {
+      'gpt-5.5': {
+        options: {
+          store: false,
+        },
         variants: {
           xhigh: {
             reasoningEffort: 'xhigh',
@@ -468,31 +465,16 @@ function configureOpenCode(apiKey) {
     },
   }
 
-  let config
-
-  if (OVERWRITE_MODE) {
-    // 全覆盖模式：只保留 OKMCode provider
-    config = {
-      $schema: 'https://opencode.ai/config.json',
-      provider: {
-        okmcode: okmcodeProvider,
-      },
-    }
-  } else {
-    // 保护模式：读取现有配置并合并
-    config = {}
-    if (fs.existsSync(configPath)) {
-      try {
-        config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      } catch (error) {
-        console.warn(`  ⚠️  无法解析现有配置，将创建新配置`)
-      }
-    }
-
-    // 合并配置
-    config.$schema = 'https://opencode.ai/config.json'
-    config.provider = config.provider || {}
-    config.provider.okmcode = okmcodeProvider
+  const config = {
+    $schema: 'https://opencode.ai/config.json',
+    model: 'okmcode/gpt-5.5',
+    agent: {
+      build: { options: { store: false } },
+      plan: { options: { store: false } },
+    },
+    provider: {
+      okmcode: okmcodeProvider,
+    },
   }
 
   backupFileOrThrow(configPath, 'aicoding.opencode.opencode.json')
@@ -508,11 +490,11 @@ function createOpenClawModel(id) {
     id,
     name: id,
     api: 'openai-responses',
-    reasoning: false,
-    input: ['text'],
+    reasoning: true,
+    input: ['text', 'image'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200000,
-    maxTokens: 8192,
+    contextWindow: 1050000,
+    maxTokens: 128000,
   }
 }
 
@@ -525,8 +507,7 @@ function configureOpenClaw(apiKey) {
   ensureDir(path.dirname(modelsPath))
 
   const providerKey = 'okmcode'
-  const primaryModelId = 'gpt-5.4'
-  const secondaryModelId = 'gpt-5.2-codex'
+  const primaryModelId = 'gpt-5.5'
   const openclawBaseUrl = buildOpenClawBaseUrl(OPENAI_BASE_URL)
 
   const modelsConfig = {
@@ -540,7 +521,7 @@ function configureOpenClaw(apiKey) {
           'User-Agent': 'curl/8.0',
           'OpenAI-Beta': 'responses=v1',
         },
-        models: [createOpenClawModel(primaryModelId), createOpenClawModel(secondaryModelId)],
+        models: [createOpenClawModel(primaryModelId)],
       },
     },
   }
@@ -558,13 +539,16 @@ function configureOpenClaw(apiKey) {
             'OpenAI-Beta': 'responses=v1',
           },
           authHeader: true,
-          models: [createOpenClawModel(primaryModelId), createOpenClawModel(secondaryModelId)],
+          models: [createOpenClawModel(primaryModelId)],
         },
       },
     },
     agents: {
       defaults: {
         workspace: HOME_DIR,
+        imageModel: {
+          primary: `${providerKey}/${primaryModelId}`,
+        },
         model: {
           primary: `${providerKey}/${primaryModelId}`,
         },
@@ -573,7 +557,7 @@ function configureOpenClaw(apiKey) {
     },
   }
 
-  // OpenClaw 策略固定为直接覆盖，不受保护/全覆盖模式影响
+  // OpenClaw 在快捷入口中固定直接覆盖托管配置。
   backupFileOrThrow(modelsPath, 'aicoding.openclaw.models.json')
   backupFileOrThrow(openclawPath, 'aicoding.openclaw.openclaw.json')
   atomicWrite(modelsPath, JSON.stringify(modelsConfig, null, 2))
@@ -597,7 +581,6 @@ async function main() {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     if (arg === '--overwrite') {
-      OVERWRITE_MODE = true
       overwriteArgProvided = true
     } else if (arg === '-p' || arg === '--platform') {
       platformArg = args[i + 1]

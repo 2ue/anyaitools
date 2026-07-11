@@ -171,10 +171,10 @@ aat mcp remove   # 删除 MCP 服务器
 
 ## 完整命令
 
-| 命令                      | 说明                                                      |
-| ------------------------- | --------------------------------------------------------- |
-| `aat`                          | 主菜单（选择 Codex、Claude Code、Gemini CLI 或 OpenCode） |
-| **Codex 管理**            |                                                           |
+| 命令                    | 说明                                                      |
+| ----------------------- | --------------------------------------------------------- |
+| `aat`                   | 主菜单（选择 Codex、Claude Code、Gemini CLI 或 OpenCode） |
+| **Codex 管理**          |                                                           |
 | `aat cx`                | Codex 交互式菜单                                          |
 | `aat cx add`            | 添加 Codex 服务商（支持预设模板和自定义）                 |
 | `aat cx list`           | 列出所有 Codex 服务商                                     |
@@ -183,7 +183,7 @@ aat mcp remove   # 删除 MCP 服务器
 | `aat cx edit [name]`    | 编辑 Codex 服务商                                         |
 | `aat cx remove [name]`  | 删除 Codex 服务商                                         |
 | `aat cx clone [source]` | 克隆 Codex 服务商                                         |
-| **Claude Code 管理**      |                                                           |
+| **Claude Code 管理**    |                                                           |
 | `aat cc`                | Claude Code 交互式菜单                                    |
 | `aat cc add`            | 添加 Claude Code 服务商                                   |
 | `aat cc list`           | 列出所有 Claude Code 服务商                               |
@@ -192,7 +192,7 @@ aat mcp remove   # 删除 MCP 服务器
 | `aat cc edit [name]`    | 编辑 Claude Code 服务商                                   |
 | `aat cc remove [name]`  | 删除 Claude Code 服务商                                   |
 | `aat cc clone [source]` | 克隆 Claude Code 服务商                                   |
-| **Gemini CLI 管理**       |                                                           |
+| **Gemini CLI 管理**     |                                                           |
 | `aat gm`                | Gemini CLI 交互式菜单                                     |
 | `aat gm add`            | 添加 Gemini CLI 服务商                                    |
 | `aat gm list`           | 列出所有 Gemini CLI 服务商                                |
@@ -201,7 +201,7 @@ aat mcp remove   # 删除 MCP 服务器
 | `aat gm edit [name]`    | 编辑 Gemini CLI 服务商                                    |
 | `aat gm remove [name]`  | 删除 Gemini CLI 服务商                                    |
 | `aat gm clone [source]` | 克隆 Gemini CLI 服务商                                    |
-| **OpenCode 管理**         |                                                           |
+| **OpenCode 管理**       |                                                           |
 | `aat oc`                | OpenCode 交互式菜单                                       |
 | `aat oc add`            | 添加 OpenCode 服务商                                      |
 | `aat oc list`           | 列出所有 OpenCode 服务商                                  |
@@ -210,12 +210,12 @@ aat mcp remove   # 删除 MCP 服务器
 | `aat oc edit [name]`    | 编辑 OpenCode 服务商                                      |
 | `aat oc remove [name]`  | 删除 OpenCode 服务商                                      |
 | `aat oc clone [source]` | 克隆 OpenCode 服务商                                      |
-| **MCP 服务器管理**        |                                                           |
+| **MCP 服务器管理**      |                                                           |
 | `aat mcp add`           | 添加 MCP 服务器                                           |
 | `aat mcp list`          | 列出所有 MCP 服务器                                       |
 | `aat mcp edit [name]`   | 编辑 MCP 服务器                                           |
 | `aat mcp remove [name]` | 删除 MCP 服务器                                           |
-| **配置同步和导入导出**    |                                                           |
+| **配置同步和导入导出**  |                                                           |
 | `aat sync`              | WebDAV 同步配置（备份/恢复/合并）                         |
 | `aat export [dir]`      | 导出配置到本地目录                                        |
 | `aat import [dir]`      | 从本地目录导入配置                                        |
@@ -265,31 +265,31 @@ aat sync upload --yes
 | 预设名称           | Base URL                    |
 | ------------------ | --------------------------- |
 | Anthropic Official | `https://api.anthropic.com` |
-| OKMCode                | `https://okmcode.com` |
-| OKMCode               | `https://okmcode.com` |
+| OKMCode            | `https://okmcode.com`       |
+| OKMCode            | `https://okmcode.com`       |
 
 ### Gemini CLI 预设（3 个）
 
-| 预设名称                | Base URL                      |
-| ----------------------- | ----------------------------- |
-| Google Gemini (API Key) | 官方默认                      |
-| OKMCode                     | `https://okmcode.com` |
-| OKMCode                    | `https://okmcode.com`          |
+| 预设名称                | Base URL              |
+| ----------------------- | --------------------- |
+| Google Gemini (API Key) | 官方默认              |
+| OKMCode                 | `https://okmcode.com` |
+| OKMCode                 | `https://okmcode.com` |
 
 ### Codex 预设（3 个）
 
-| 预设名称        | Base URL                      |
-| --------------- | ----------------------------- |
-| OpenAI Official | `https://api.openai.com/v1`   |
-| OKMCode             | `https://okmcode.com` |
-| OKMCode            | `https://okmcode.com`          |
+| 预设名称        | Base URL                    |
+| --------------- | --------------------------- |
+| OpenAI Official | `https://api.openai.com/v1` |
+| OKMCode         | `https://okmcode.com`       |
+| OKMCode         | `https://okmcode.com`       |
 
 ### OpenCode 预设（2 个）
 
-| 预设名称 | Base URL                      |
-| -------- | ----------------------------- |
-| OKMCode      | `https://okmcode.com` |
-| OKMCode     | `https://okmcode.com`          |
+| 预设名称 | Base URL              |
+| -------- | --------------------- |
+| OKMCode  | `https://okmcode.com` |
+| OKMCode  | `https://okmcode.com` |
 
 ### MCP 预设（多个）
 
@@ -392,7 +392,7 @@ $ aat cc use "Claude Test"
 
 **安全写入承诺**：
 
-- 写入前备份（`.bak`），失败时自动回滚
+- 快捷覆盖和其他高风险入口写入前备份；常规 provider 管理不生成 `.bak`
 - 常规管理命令（如 `aat cx` / `aat cc` / `aat gm` / `aat oc` / `aat openclaw`）默认采用增量更新
 - 快捷配置命令（如 `aat okm`）会对所涉及工具执行覆盖式写入
 - API Key 存储在本地，权限 `0600`

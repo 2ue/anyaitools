@@ -5,6 +5,8 @@ import { parse as parseToml, stringify as stringifyToml } from '@iarna/toml'
 import type { Provider } from '../tool-manager.js'
 import type { WriteOptions } from '../tool-manager.types.js'
 import { getCodexConfigPath, getCodexAuthPath, getCodexDir } from '../paths.js'
+import { OKMCODE_ROOT_URL } from '../presets/okmcode.js'
+import { getCodexSettings } from '../codex-settings.js'
 import { ensureDir, fileExists, readJSON, writeJSON } from '../utils/file.js'
 import { deepMerge } from '../utils/template.js'
 
@@ -14,22 +16,23 @@ import { deepMerge } from '../utils/template.js'
 interface CodexConfig {
   model_provider?: string
   model?: string
+  review_model?: string
   model_reasoning_effort?: string
+  plan_mode_reasoning_effort?: string
+  model_reasoning_summary?: string
   model_verbosity?: string
+  personality?: string
   web_search?: string
-  network_access?: string
-  disable_response_storage?: boolean
   sandbox_mode?: string
-  windows_wsl_setup_acknowledged?: boolean
   approval_policy?: string
-  profile?: string
   file_opener?: string
   history?: CodexHistory
   tui?: CodexTui
   shell_environment_policy?: CodexShellEnvironmentPolicy
   features?: CodexFeatures
   sandbox_workspace_write?: CodexSandboxWorkspaceWrite
-  profiles?: Record<string, CodexProfile>
+  windows?: CodexWindows
+  windows_wsl_setup_acknowledged?: boolean
   notice?: CodexNotice
   model_providers?: Record<string, CodexModelProvider>
   [key: string]: unknown // 保留其他用户自定义字段
@@ -52,25 +55,22 @@ interface CodexShellEnvironmentPolicy {
 }
 
 interface CodexFeatures {
-  apply_patch_freeform?: boolean
   unified_exec?: boolean
-  suppress_unstable_features_warning?: boolean
+  multi_agent?: boolean
+  shell_tool?: boolean
+  shell_snapshot?: boolean
+  fast_mode?: boolean
+  personality?: boolean
+  [key: string]: unknown
+}
+
+interface CodexWindows {
+  sandbox?: 'unelevated' | 'elevated'
   [key: string]: unknown
 }
 
 interface CodexSandboxWorkspaceWrite {
   network_access?: boolean
-  [key: string]: unknown
-}
-
-interface CodexProfile {
-  model_provider?: string
-  model?: string
-  model_reasoning_effort?: string
-  model_verbosity?: string
-  plan_mode_reasoning_effort?: string
-  approval_policy?: string
-  sandbox_mode?: string
   [key: string]: unknown
 }
 
@@ -84,6 +84,7 @@ interface CodexModelProvider {
   base_url: string
   wire_api: string
   requires_openai_auth: boolean
+  [key: string]: unknown
 }
 
 /**
@@ -126,13 +127,15 @@ function resolveTemplatePath(relativePath: string): string | null {
  * - 这里定义的是其他默认字段
  */
 const CODEX_DEFAULT_CONFIG: Partial<CodexConfig> = {
-  model: 'gpt-5.4',
+  model: 'gpt-5.5',
+  review_model: 'gpt-5.5',
   model_reasoning_effort: 'xhigh',
-  disable_response_storage: true,
+  plan_mode_reasoning_effort: 'xhigh',
+  model_reasoning_summary: 'auto',
+  model_verbosity: 'high',
+  personality: 'pragmatic',
   sandbox_mode: 'danger-full-access',
-  windows_wsl_setup_acknowledged: true,
   approval_policy: 'never',
-  profile: 'auto-max',
   file_opener: 'vscode',
   web_search: 'cached',
   suppress_unstable_features_warning: true,
@@ -149,35 +152,61 @@ const CODEX_DEFAULT_CONFIG: Partial<CodexConfig> = {
   sandbox_workspace_write: {
     network_access: true,
   },
-  features: {
-    plan_tool: true,
-    apply_patch_freeform: true,
-    view_image_tool: true,
-    unified_exec: false,
-    streamable_shell: false,
-    rmcp_client: true,
-    elevated_windows_sandbox: true,
+  windows: {
+    sandbox: 'elevated',
   },
-  profiles: {
-    'auto-max': {
-      approval_policy: 'never',
-      sandbox_mode: 'workspace-write',
-    },
-    review: {
-      approval_policy: 'on-request',
-      sandbox_mode: 'workspace-write',
-    },
+  features: {
+    multi_agent: true,
+    shell_tool: true,
+    shell_snapshot: true,
+    fast_mode: true,
+    personality: true,
   },
   notice: {
     hide_gpt5_1_migration_prompt: true,
   },
 }
 
-const OKMCODE_PROVIDER_HOSTS = ['okmcode.com']
+const OKMCODE_PROVIDER_HOST = new URL(OKMCODE_ROOT_URL).hostname.toLowerCase()
+
+const DEPRECATED_FEATURE_KEYS = [
+  'web_search_request',
+  'web_search_cached',
+  'web_search',
+  'plan_tool',
+  'view_image_tool',
+  'streamable_shell',
+  'rmcp_client',
+  'apply_patch_freeform',
+] as const
+
+const DEPRECATED_ROOT_KEYS = [
+  'web_search_request',
+  'disable_response_storage',
+  'network_access',
+  'profile',
+  'profiles',
+  'experimental_use_exec_command_tool',
+  'include_apply_patch_tool',
+] as const
+
+const CONFLICTING_PROVIDER_AUTH_KEYS = [
+  'env_key',
+  'env_key_instructions',
+  'experimental_bearer_token',
+  'auth',
+  'aws',
+] as const
 
 function resolveCodexProviderKey(provider: Provider): string {
-  const baseUrl = (provider.baseUrl || '').toLowerCase()
-  if (OKMCODE_PROVIDER_HOSTS.some((host) => baseUrl.includes(host))) return 'okmcode'
+  try {
+    const hostname = new URL(provider.baseUrl).hostname.toLowerCase()
+    if (hostname === OKMCODE_PROVIDER_HOST || hostname.endsWith(`.${OKMCODE_PROVIDER_HOST}`)) {
+      return 'okmcode'
+    }
+  } catch {
+    // Invalid URLs are validated by the caller; keep the provider name as a safe fallback.
+  }
   return provider.name
 }
 
@@ -201,16 +230,33 @@ function loadCodexTemplateConfig(): Partial<CodexConfig> {
 }
 
 function removeDeprecatedKeys(config: CodexConfig): void {
-  if (
-    config.features &&
-    typeof config.features === 'object' &&
-    !Array.isArray(config.features) &&
-    'web_search_request' in config.features
-  ) {
-    delete (config.features as Record<string, unknown>).web_search_request
+  if (config.features && typeof config.features === 'object' && !Array.isArray(config.features)) {
+    const features = config.features as Record<string, unknown>
+    const legacyElevatedSandbox = features.elevated_windows_sandbox
+    if (
+      typeof legacyElevatedSandbox === 'boolean' &&
+      (!config.windows || config.windows.sandbox === undefined)
+    ) {
+      config.windows = {
+        ...(config.windows || {}),
+        sandbox: legacyElevatedSandbox ? 'elevated' : 'unelevated',
+      }
+    }
+    delete features.elevated_windows_sandbox
+
+    for (const key of DEPRECATED_FEATURE_KEYS) {
+      if (key in features) delete features[key]
+    }
   }
-  if ('web_search_request' in config) {
-    delete (config as Record<string, unknown>).web_search_request
+
+  const root = config as Record<string, unknown>
+  for (const key of DEPRECATED_ROOT_KEYS) {
+    if (key in root) delete root[key]
+  }
+
+  // Codex only exposes this onboarding state in Windows builds; strict config rejects it elsewhere.
+  if (process.platform !== 'win32') {
+    delete root.windows_wsl_setup_acknowledged
   }
 }
 
@@ -222,51 +268,45 @@ function loadExistingCodexConfig(configPath: string): CodexConfig {
   try {
     const content = fs.readFileSync(configPath, 'utf-8')
     return parseToml(content) as CodexConfig
-  } catch {
-    return {}
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`无法解析现有 Codex config.toml，已中止切换以避免覆盖: ${message}`)
   }
 }
 
-function buildManagedProvider(provider: Provider, providerKey: string): CodexModelProvider {
+function loadExistingCodexAuth(authPath: string): CodexAuth {
+  if (!fileExists(authPath)) {
+    return { OPENAI_API_KEY: '' }
+  }
+
+  try {
+    return readJSON<CodexAuth>(authPath)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`无法解析现有 Codex auth.json，已中止切换以避免覆盖: ${message}`)
+  }
+}
+
+function buildManagedProvider(
+  provider: Provider,
+  providerKey: string,
+  existingProvider: CodexModelProvider | undefined = undefined
+): CodexModelProvider {
+  const preservedProvider: Record<string, unknown> =
+    existingProvider && typeof existingProvider === 'object' && !Array.isArray(existingProvider)
+      ? { ...existingProvider }
+      : {}
+
+  for (const key of CONFLICTING_PROVIDER_AUTH_KEYS) {
+    delete preservedProvider[key]
+  }
+
   return {
+    ...preservedProvider,
     name: providerKey,
     base_url: provider.baseUrl,
     wire_api: 'responses',
     requires_openai_auth: true,
-  }
-}
-
-function syncActiveProfile(config: CodexConfig, providerKey: string, provider: Provider): void {
-  const activeProfileName =
-    typeof config.profile === 'string' && config.profile.trim().length > 0 ? config.profile : null
-  if (!activeProfileName) return
-
-  const profiles =
-    config.profiles && typeof config.profiles === 'object' && !Array.isArray(config.profiles)
-      ? config.profiles
-      : null
-  if (!profiles) return
-
-  const activeProfile =
-    profiles[activeProfileName] &&
-    typeof profiles[activeProfileName] === 'object' &&
-    !Array.isArray(profiles[activeProfileName])
-      ? profiles[activeProfileName]
-      : null
-  if (!activeProfile) return
-
-  activeProfile.model_provider = providerKey
-  activeProfile.model = provider.model || config.model || activeProfile.model || 'gpt-5.4'
-
-  if (typeof config.model_reasoning_effort === 'string') {
-    activeProfile.model_reasoning_effort = config.model_reasoning_effort
-  }
-  if (typeof config.model_verbosity === 'string') {
-    activeProfile.model_verbosity = config.model_verbosity
-  }
-  if (typeof (config as Record<string, unknown>).plan_mode_reasoning_effort === 'string') {
-    activeProfile.plan_mode_reasoning_effort = (config as Record<string, string>)
-      .plan_mode_reasoning_effort
   }
 }
 
@@ -281,11 +321,10 @@ function writeCodexConfigOverwrite(provider: Provider): void {
 
   const providerKey = resolveCodexProviderKey(provider)
   nextConfig.model_provider = providerKey
-  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.4'
+  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.5'
   nextConfig.model_providers = {
     [providerKey]: buildManagedProvider(provider, providerKey),
   }
-  syncActiveProfile(nextConfig, providerKey, provider)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fs.writeFileSync(configPath, stringifyToml(nextConfig as any), { mode: 0o600 })
@@ -300,15 +339,25 @@ function writeCodexConfigMerge(provider: Provider): void {
 
   const configPath = getCodexConfigPath()
   const existingConfig = loadExistingCodexConfig(configPath)
+  const authPath = getCodexAuthPath()
+  const existingAuth = loadExistingCodexAuth(authPath)
   const templateConfig = loadCodexTemplateConfig()
+  removeDeprecatedKeys(existingConfig)
   const nextConfig = deepMerge<CodexConfig>(templateConfig as CodexConfig, existingConfig)
-  const providerKey = resolveCodexProviderKey(provider)
+  const resolvedProviderKey = resolveCodexProviderKey(provider)
+  const existingProviderKey =
+    typeof existingConfig.model_provider === 'string' && existingConfig.model_provider.trim()
+      ? existingConfig.model_provider
+      : undefined
+  const providerKey =
+    getCodexSettings().preserveProviderName && existingProviderKey
+      ? existingProviderKey
+      : resolvedProviderKey
 
   removeDeprecatedKeys(nextConfig)
 
   nextConfig.model_provider = providerKey
-  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.4'
-  syncActiveProfile(nextConfig, providerKey, provider)
+  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.5'
 
   const existingProviders =
     nextConfig.model_providers &&
@@ -316,7 +365,16 @@ function writeCodexConfigMerge(provider: Provider): void {
     !Array.isArray(nextConfig.model_providers)
       ? { ...nextConfig.model_providers }
       : {}
+  const userProviders =
+    existingConfig.model_providers &&
+    typeof existingConfig.model_providers === 'object' &&
+    !Array.isArray(existingConfig.model_providers)
+      ? existingConfig.model_providers
+      : {}
   const lowerProviderKey = providerKey.toLowerCase()
+  const existingManagedProvider =
+    userProviders[providerKey] ||
+    Object.entries(userProviders).find(([key]) => key.toLowerCase() === lowerProviderKey)?.[1]
 
   for (const key of Object.keys(existingProviders)) {
     if (key.toLowerCase() === lowerProviderKey) {
@@ -326,21 +384,12 @@ function writeCodexConfigMerge(provider: Provider): void {
 
   nextConfig.model_providers = {
     ...existingProviders,
-    [providerKey]: buildManagedProvider(provider, providerKey),
+    [providerKey]: buildManagedProvider(provider, providerKey, existingManagedProvider),
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fs.writeFileSync(configPath, stringifyToml(nextConfig as any), { mode: 0o600 })
 
-  const authPath = getCodexAuthPath()
-  let existingAuth: CodexAuth = { OPENAI_API_KEY: '' }
-  if (fileExists(authPath)) {
-    try {
-      existingAuth = readJSON<CodexAuth>(authPath)
-    } catch {
-      existingAuth = { OPENAI_API_KEY: '' }
-    }
-  }
   const nextAuth: CodexAuth = {
     ...existingAuth,
     OPENAI_API_KEY: provider.apiKey,
@@ -349,15 +398,12 @@ function writeCodexConfigMerge(provider: Provider): void {
 }
 
 /**
- * 写入 Codex 配置（覆盖写入）
+ * 写入 Codex 配置
  *
  * 策略：
- * 1. config.toml：用模板覆盖写入（仅写入必要字段）
- * 2. auth.json：覆盖写入（仅保留 OPENAI_API_KEY）
- *
- * 版本迭代：
- * - 只需修改 CODEX_DEFAULT_CONFIG 对象
- * - 新增/删除字段会自动处理（基于模板）
+ * 1. 默认 merge：保留用户字段和其他 provider，只更新当前 provider 与 API Key
+ * 2. overwrite：用模板重建 config.toml，auth.json 仅保留 OPENAI_API_KEY
+ * 3. 两种模式都会清理已废弃的 Codex 配置键
  *
  * 注意：
  * - TOML 解析器会丢失注释，这是已知限制

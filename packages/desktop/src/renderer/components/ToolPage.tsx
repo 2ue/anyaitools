@@ -1,15 +1,14 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Provider } from '@anyaitools/types'
 import ProviderGrid from './ProviderGrid'
+import ProviderList from './ProviderList'
 import ConfigEditorModal from './ConfigEditorModal'
 import { AlertDialog } from './dialogs'
-import { Plus, Inbox, FileCode2, Search } from 'lucide-react'
+import { Plus, Inbox, FileCode2, LayoutGrid, List, Search } from 'lucide-react'
 import { BUTTON_STYLES } from '../styles/button'
-import { getBrandButtonWithIcon, getBrandInputFocus } from '../styles/brand-colors'
+import { getBrandButtonWithIcon, getBrandInputFocus, type ToolType } from '../styles/brand-colors'
 
 type ConfigFile = { name: string; path: string; content: string; language: 'json' | 'toml' | 'env' }
-
-type ToolType = 'claude' | 'codex' | 'gemini' | 'opencode' | 'openclaw'
 
 interface BrandIconProps {
   className?: string
@@ -28,6 +27,7 @@ export interface ToolPageProps {
   onEdit: (provider: Provider) => void
   onDelete: (id: string, name: string) => void
   onClone: (provider: Provider) => void
+  headerActions?: ReactNode
 }
 
 export default function ToolPage({
@@ -41,7 +41,9 @@ export default function ToolPage({
   onEdit,
   onDelete,
   onClone,
+  headerActions,
 }: ToolPageProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showConfigEditor, setShowConfigEditor] = useState(false)
   const [configFiles, setConfigFiles] = useState<ConfigFile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -87,8 +89,8 @@ export default function ToolPage({
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
             <div className="flex items-center gap-3">
               <Icon size={28} />
               <h1 className="text-2xl font-bold text-gray-900">{toolName} 服务商管理</h1>
@@ -98,7 +100,42 @@ export default function ToolPage({
               {searchQuery && ` · 搜索结果: ${filteredProviders.length} 个`}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {headerActions}
+            <div
+              className="flex h-9 items-center rounded-lg border border-gray-200 bg-gray-50 p-1"
+              role="group"
+              aria-label="服务商视图"
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                }`}
+                title="网格视图"
+                aria-label="切换到网格视图"
+                aria-pressed={viewMode === 'grid'}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                }`}
+                title="列表视图"
+                aria-label="切换到列表视图"
+                aria-pressed={viewMode === 'list'}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
             <button onClick={handleEditConfig} className={BUTTON_STYLES.icon} title="编辑配置文件">
               <FileCode2 className="w-5 h-5" />
             </button>
@@ -124,7 +161,7 @@ export default function ToolPage({
         </div>
       </div>
 
-      {/* Provider Grid */}
+      {/* Provider Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {providers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -144,8 +181,18 @@ export default function ToolPage({
             <p className="text-lg font-medium mb-2">没有匹配的服务商</p>
             <p className="text-sm text-gray-400 mb-4">尝试使用其他关键词搜索</p>
           </div>
-        ) : (
+        ) : viewMode === 'grid' ? (
           <ProviderGrid
+            providers={filteredProviders}
+            currentProviderId={currentProvider?.id}
+            tool={toolType}
+            onSwitch={onSwitch}
+            onEdit={(provider) => onEdit(provider)}
+            onDelete={onDelete}
+            onClone={(provider) => onClone(provider)}
+          />
+        ) : (
+          <ProviderList
             providers={filteredProviders}
             currentProviderId={currentProvider?.id}
             tool={toolType}

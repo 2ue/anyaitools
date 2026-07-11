@@ -21,6 +21,7 @@
 - 依赖 `anyaitools` 的 core 能力
 - 会创建/复用 anyaitools 中的 provider 数据
 - 最终按快捷覆盖语义应用到 Claude / Codex / Gemini / OpenCode
+- 覆盖前备份 anyaitools provider 数据和目标工具配置；失败时回滚
 
 用法：
 
@@ -34,6 +35,7 @@ node scripts/setup-okmcode.mjs sk-ant-xxx
 - 不依赖 anyaitools
 - 直接写 Claude / Codex / Gemini / OpenCode 的目标配置文件
 - 当前同样遵循快捷覆盖语义
+- 如果目标文件已存在，会先创建同路径 `.bak` 备份
 
 用法：
 

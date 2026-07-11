@@ -99,6 +99,13 @@ export {
   type AnyAIToolsConfig,
 } from './config.js'
 
+// Codex settings
+export {
+  getCodexSettings,
+  setCodexPreserveProviderName,
+  type CodexSettings,
+} from './codex-settings.js'
+
 // Sync (WebDAV 同步 - 加密 API Key)
 export { testWebDAVConnection } from './sync/webdav-client.js'
 export type { SyncConfig, SyncData, ToolConfigForSync, WebDAVAuthType } from './sync/types.js'

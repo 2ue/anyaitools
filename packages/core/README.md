@@ -83,7 +83,7 @@ pnpm test
 
 ## 设计原则
 
-- **安全写入**：写入前备份；Codex 的 `config.toml/auth.json` 备份后覆盖写入，其他工具尽量保留用户字段
+- **安全写入**：常规 provider 管理增量保留用户字段，解析失败时中止；快捷覆盖入口由调用方负责写前备份
 - **模板优先**：Codex/Claude/Gemini/OpenCode 均支持从 `packages/core/templates/*` 读取模板
 - **原子操作**：使用 write temp + rename 保证原子性
 - **硬编码 Writers**：直接实现 `writeCodexConfig` 和 `writeClaudeConfig`，不做抽象层

@@ -54,7 +54,7 @@
     "packages/cli/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write",
-      "bash -c 'cd packages/cli && pnpm exec tsc --noEmit'"
+      "bash -c 'cd packages/cli && pnpm exec tsc --noEmit --rootDir ../..'"
     ],
     "packages/desktop/**/*.{ts,tsx}": [
       "prettier --write",

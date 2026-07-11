@@ -4,7 +4,7 @@
  * 统一使用主题色：蓝色 #4285F4
  */
 
-type ToolType = 'claude' | 'codex' | 'gemini' | 'opencode' | 'openclaw'
+export type ToolType = 'claude' | 'codex' | 'gemini' | 'opencode' | 'openclaw'
 
 /**
  * 统一的主题色样式类名

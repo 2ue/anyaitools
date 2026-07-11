@@ -20,6 +20,7 @@ Codex 通过读取用户目录下的两个配置文件来获取 API 认证信息
 2. **`~/.codex/auth.json`**：API 认证密钥
 
 当你运行 Codex 时，它会：
+
 1. 从 `config.toml` 读取当前使用的服务商名称（`model_provider`）
 2. 从 `config.toml` 读取该服务商的 `base_url` 等配置
 3. 从 `auth.json` 读取 API 密钥
@@ -41,11 +42,13 @@ mkdir $env:USERPROFILE\.codex
 ```
 
 **Windows 路径说明**：
+
 - `$env:USERPROFILE` 是 PowerShell 中的环境变量，指向当前用户的主目录
 - 例如：如果你的用户名是 `Administrator`，则 `$env:USERPROFILE` 等价于 `C:\Users\Administrator`
 - 完整路径示例：`C:\Users\Administrator\.codex\config.toml`
 
 **快速打开配置目录**：
+
 ```powershell
 # Windows (PowerShell) - 直接在文件资源管理器中打开配置目录
 explorer $env:USERPROFILE\.codex
@@ -73,7 +76,7 @@ code $env:USERPROFILE\.codex\config.toml
 
 ```toml
 model_provider = "serverA"
-model = "gpt-5.3-codex"
+model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 
 [model_providers.serverA]
@@ -85,19 +88,22 @@ requires_openai_auth = true
 
 **关键配置项说明**：
 
-| 字段 | 说明 | 必填 |
-|------|------|------|
-| `model_provider` | 当前使用的服务商名称（必须与 `[model_providers.xxx]` 中的名称一致） | ✅ 必填 |
-| `model` | 使用的模型名称（如 `gpt-5.3-codex`） | ✅ 必填 |
-| `model_reasoning_effort` | 模型推理强度（可选，建议保留） | ❌ 可选 |
-| `web_search` | Web 搜索策略（如 `cached`） | ❌ 可选（建议保留） |
-| `disable_response_storage` | 禁用响应存储（可选，建议保留） | ❌ 可选 |
-| `windows_wsl_setup_acknowledged` | Windows/WSL 初始化提示确认（建议保留） | ❌ 可选（建议保留） |
-| `[model_providers.xxx]` | 服务商配置块，`xxx` 为服务商名称 | ✅ 必填 |
-| `name` | 服务商名称（必须与 `model_provider` 一致） | ✅ 必填 |
-| `base_url` | 服务商的 API 基础地址 | ✅ 必填 |
-| `wire_api` | API 协议类型（通常为 `responses`） | ✅ 必填 |
-| `requires_openai_auth` | 是否需要 OpenAI 格式认证（通常为 `true`） | ✅ 必填 |
+| 字段                         | 说明                                                                | 必填                |
+| ---------------------------- | ------------------------------------------------------------------- | ------------------- |
+| `model_provider`             | 当前使用的服务商名称（必须与 `[model_providers.xxx]` 中的名称一致） | ✅ 必填             |
+| `model`                      | 使用的模型名称（如 `gpt-5.5`）                                      | ✅ 必填             |
+| `model_reasoning_effort`     | 模型推理强度（可选，建议保留）                                      | ❌ 可选             |
+| `review_model`               | `/review` 使用的模型（可选，默认跟随当前模型）                      | ❌ 可选             |
+| `plan_mode_reasoning_effort` | Plan 模式推理强度（可选）                                           | ❌ 可选             |
+| `model_reasoning_summary`    | 推理摘要展示策略（如 `auto`）                                       | ❌ 可选             |
+| `model_verbosity`            | GPT-5 输出详细程度（如 `high`）                                     | ❌ 可选             |
+| `personality`                | 默认沟通风格（如 `pragmatic`）                                      | ❌ 可选             |
+| `web_search`                 | Web 搜索策略（如 `cached`）                                         | ❌ 可选（建议保留） |
+| `[model_providers.xxx]`      | 服务商配置块，`xxx` 为服务商名称                                    | ✅ 必填             |
+| `name`                       | 服务商名称（必须与 `model_provider` 一致）                          | ✅ 必填             |
+| `base_url`                   | 服务商的 API 基础地址                                               | ✅ 必填             |
+| `wire_api`                   | API 协议类型（通常为 `responses`）                                  | ✅ 必填             |
+| `requires_openai_auth`       | 是否需要 OpenAI 格式认证（通常为 `true`）                           | ✅ 必填             |
 
 ### 第 3 步：配置 API 密钥（auth.json）
 
@@ -120,6 +126,7 @@ notepad $env:USERPROFILE\.codex\auth.json
 ```
 
 **重要提示**：
+
 - `OPENAI_API_KEY` 的值必须替换为服务商提供的真实 API 密钥
 - 密钥格式通常为 `sk-xxx` 或 `sk-proj-xxx`
 
@@ -138,9 +145,10 @@ codex --version
 ### 使用 okmcode 服务商（关键字段）
 
 **config.toml**（完整模板见 `packages/core/templates/codex/config.toml`）：
+
 ```toml
 model_provider = "okmcode"
-model = "gpt-5.3-codex"
+model = "gpt-5.5"
 
 [model_providers.okmcode]
 name = "okmcode"
@@ -150,11 +158,13 @@ requires_openai_auth = true
 ```
 
 **auth.json**：
+
 ```json
 {
   "OPENAI_API_KEY": "sk-proj-abc123xyz456..."
 }
 ```
+
 ---
 
 后面是配置字段讲解，不想听的同学可以忽略
@@ -170,7 +180,7 @@ Codex 使用 TOML 格式存储配置（比 JSON 更易读）。
 
 ```toml
 model_provider = "serverA"  # 当前使用的服务商名称
-model = "gpt-5.3-codex"        # 使用的模型
+model = "gpt-5.5"        # 使用的模型
 model_reasoning_effort = "xhigh" # 推理强度（可选）
 ```
 
@@ -185,6 +195,7 @@ requires_openai_auth = true  # 认证方式
 ```
 
 **重要特性**：
+
 - 你可以在同一个 `config.toml` 中配置**多个服务商**
 - 通过修改 `model_provider` 的值来切换服务商
 
@@ -197,6 +208,7 @@ requires_openai_auth = true  # 认证方式
 ```
 
 **注意**：
+
 - 这个文件只包含一个字段：`OPENAI_API_KEY`
 - 密钥必须是服务商提供的有效密钥
 - 文件格式为 JSON
@@ -210,10 +222,11 @@ Codex 支持在同一个 `config.toml` 中配置多个服务商，切换服务�
 ### 示例：配置三个服务商
 
 **config.toml**（仅关键字段；完整模板见 `packages/core/templates/codex/config.toml`）：
+
 ```toml
 # 当前使用的服务商
 model_provider = "serverA"
-model = "gpt-5.3-codex"
+model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 
 # 服务商 A：serverA
@@ -241,16 +254,19 @@ requires_openai_auth = true
 ### 切换服务商
 
 1. **切换到 openai**：
+
    ```toml
    model_provider = "openai"  # 修改这一行
    ```
 
 2. **切换到 custom**：
+
    ```toml
    model_provider = "custom"  # 修改这一行
    ```
 
 3. **更新 API 密钥**（auth.json）：
+
    ```json
    {
      "OPENAI_API_KEY": "新服务商的密钥"
@@ -286,11 +302,13 @@ New-Item -ItemType File -Force -Path $env:USERPROFILE\.codex\auth.json
 ### 2. TOML 格式错误？
 
 **常见错误**：
+
 - 字符串未使用引号（`base_url = https://...` ❌）
 - 配置块名称写错（`[model_provider.xxx]` ❌，应为 `[model_providers.xxx]`）
 - 布尔值写错（`requires_openai_auth = "true"` ❌，应为 `true`）
 
 **正确示例**：
+
 ```toml
 model_provider = "serverA"  # ✅ 字符串需要引号
 requires_openai_auth = true   # ✅ 布尔值不需要引号
@@ -303,11 +321,13 @@ requires_openai_auth = true   # ✅ 布尔值不需要引号
 ### 3. 修改配置后不生效？
 
 **可能原因**：
+
 - Codex 进程未重启
 - `model_provider` 名称与服务商配置块名称不匹配
 - `auth.json` 中的密钥错误
 
 **解决方法**：
+
 1. 完全退出 Codex
 2. 检查 `model_provider` 是否与 `[model_providers.xxx]` 中的名称一致
 3. 检查 `auth.json` 中的密钥是否正确
@@ -349,6 +369,7 @@ chmod 600 ~/.codex/auth.json
 ```
 
 **Windows 说明**：
+
 - Windows 系统的文件权限管理方式与 macOS/Linux 不同
 - 通常情况下，用户主目录下的文件默认只有当前用户可访问
 - 如果需要修改权限，可以右键点击文件 → 属性 → 安全选项卡进行设置
@@ -361,6 +382,7 @@ chmod 600 ~/.codex/auth.json
 **是的！** 不同服务商的 API 密钥通常是不同的。
 
 切换服务商的完整步骤：
+
 1. 修改 `config.toml` 中的 `model_provider`
 2. 修改 `auth.json` 中的 `OPENAI_API_KEY`
 3. 重启 Codex
@@ -373,14 +395,14 @@ chmod 600 ~/.codex/auth.json
 
 手动配置虽然可行，但存在以下问题：
 
-| 手动配置 | 使用 anyaitools |
-|---------|-----------|
-| ❌ 需要记住两个配置文件路径 | ✅ 一条命令搞定 |
-| ❌ 需要同时修改 TOML 和 JSON | ✅ 自动同步更新 |
-| ❌ 容易写错 TOML 格式 | ✅ 自动生成正确配置 |
-| ❌ 切换服务商需要改两个文件 | ✅ `aat cx use <id>` 即可 |
-| ❌ 无法管理多个服务商 | ✅ 统一管理所有服务商 |
-| ❌ 容易破坏现有配置 | ✅ 备份后覆盖写入（更稳定） |
+| 手动配置                     | 使用 anyaitools                 |
+| ---------------------------- | ------------------------------- |
+| ❌ 需要记住两个配置文件路径  | ✅ 一条命令搞定                 |
+| ❌ 需要同时修改 TOML 和 JSON | ✅ 自动同步更新                 |
+| ❌ 容易写错 TOML 格式        | ✅ 自动生成正确配置             |
+| ❌ 切换服务商需要改两个文件  | ✅ `aat cx use <id>` 即可       |
+| ❌ 无法管理多个服务商        | ✅ 统一管理所有服务商           |
+| ❌ 容易破坏现有配置          | ✅ 常规切换增量合并并清理废弃键 |
 
 ---
 
@@ -395,6 +417,7 @@ aat cx add
 ```
 
 按提示输入服务商信息：
+
 - 名称（如 `serverA`）
 - Base URL（如 `https://codex-api.serverA.com/v1`）
 - API Key（如 `sk-xxx`）
@@ -406,8 +429,14 @@ aat cx use <服务商ID>
 ```
 
 anyaitools 会自动：
-- 备份 `config.toml` 为 `config.toml.bak`，并按模板覆盖写入（仅保留一个 `model_providers`）
-- 备份 `auth.json` 为 `auth.json.bak`，并覆盖写入仅包含 `OPENAI_API_KEY` 的 `auth.json`
+
+- 解析并增量更新 `config.toml`，保留其他 provider 和合法自定义字段
+- 自动删除 Codex 已废弃的旧键；配置无法解析时中止，不覆盖原文件
+- 更新 `auth.json` 的 `OPENAI_API_KEY`，保留其他字段
+
+Desktop 的 Codex 页面提供“保护 `model_provider`”开关，默认关闭。开启后，普通切换若发现 `config.toml` 已有非空的顶层 `model_provider`，会保留该名称，并用切换目标更新同名 `model_providers` 配置块；没有现有名称时仍使用目标服务商名称初始化。
+
+该开关保存在 `~/.anyaitools/codex.json`，因此后续 CLI 和 Desktop 普通切换都会遵守。`aat okm`、aicoding、standalone 等快捷配置入口采用覆盖模式，不应用此开关；它们会先备份其管理的目标文件，再写入一套完整托管配置。
 
 ### 3. 查看当前服务商
 

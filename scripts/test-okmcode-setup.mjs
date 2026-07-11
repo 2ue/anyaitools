@@ -4,7 +4,7 @@
  *
  * 测试策略：
  * 1. 使用临时测试目录（不影响正式环境）
- * 2. 测试保护模式和全覆盖模式
+ * 2. 测试快捷覆盖模式与写前备份
  * 3. 验证配置文件内容
  * 4. 测试完成后清理
  */
@@ -131,10 +131,10 @@ function assert(condition, message) {
 }
 
 // ============================================================================
-// 测试 1: setup-okmcode-standalone.mjs - 保护模式（从零开始）
+// 测试 1: setup-okmcode-standalone.mjs - 快捷覆盖模式（从零开始）
 // ============================================================================
 
-console.log('📋 测试 1: 独立脚本 - 保护模式（从零开始）\n')
+console.log('📋 测试 1: 独立脚本 - 快捷覆盖模式（从零开始）\n')
 
 test('应该创建所有配置文件', () => {
   const result = runScript('scripts/setup-okmcode-standalone.mjs', [TEST_API_KEY])
@@ -145,24 +145,47 @@ test('应该创建所有配置文件', () => {
   assert(fs.existsSync(path.join(TEST_HOME, '.codex/auth.json')), 'Codex auth 未创建')
   assert(fs.existsSync(path.join(TEST_HOME, '.gemini/settings.json')), 'Gemini 配置未创建')
   assert(fs.existsSync(path.join(TEST_HOME, '.gemini/.env')), 'Gemini .env 未创建')
-  assert(fs.existsSync(path.join(TEST_HOME, '.config/opencode/opencode.json')), 'OpenCode 配置未创建')
+  assert(
+    fs.existsSync(path.join(TEST_HOME, '.config/opencode/opencode.json')),
+    'OpenCode 配置未创建'
+  )
 })
 
 test('Claude 配置应该包含正确的认证信息', () => {
   const config = readTestConfig('claude')
+  assert(config.model === 'sonnet', 'Claude 默认模型不正确')
   assert(config.env.ANTHROPIC_AUTH_TOKEN === TEST_API_KEY, 'API Key 不正确')
   assert(config.env.ANTHROPIC_BASE_URL === OKMCODE_BASE_URLS.claude, 'Base URL 不正确')
+  assert(config.alwaysThinkingEnabled === true, 'Claude extended thinking 未启用')
 })
 
 test('Codex 配置应该包含 OKMCode provider', () => {
   const config = readTestConfig('codex')
   assert(config.includes('model_provider = "okmcode"'), 'model_provider 不正确')
-  assert(config.includes('model = "gpt-5.2-codex"'), 'model 不正确')
-  assert(config.includes('model_reasoning_effort = "high"'), 'model_reasoning_effort 不正确')
+  assert(config.includes('model = "gpt-5.5"'), 'model 不正确')
+  assert(config.includes('review_model = "gpt-5.5"'), 'review_model 不正确')
+  assert(config.includes('model_reasoning_effort = "xhigh"'), 'model_reasoning_effort 不正确')
+  assert(
+    config.includes('plan_mode_reasoning_effort = "xhigh"'),
+    'plan_mode_reasoning_effort 不正确'
+  )
+  assert(config.includes('model_reasoning_summary = "auto"'), 'model_reasoning_summary 不正确')
   assert(config.includes('model_verbosity = "high"'), 'model_verbosity 不正确')
-  assert(config.includes('network_access = "enabled"'), 'network_access 不正确')
-  assert(config.includes('disable_response_storage = true'), 'disable_response_storage 不正确')
-  assert(config.includes('windows_wsl_setup_acknowledged = true'), 'windows_wsl_setup_acknowledged 不正确')
+  assert(config.includes('personality = "pragmatic"'), 'personality 不正确')
+  assert(config.includes('sandbox_mode = "danger-full-access"'), 'sandbox_mode 不正确')
+  assert(config.includes('approval_policy = "never"'), 'approval_policy 不正确')
+  assert(config.includes('web_search = "cached"'), 'web_search 不正确')
+  assert(config.includes('[windows]'), 'Windows 配置块不存在')
+  assert(config.includes('sandbox = "elevated"'), 'Windows sandbox 不正确')
+  assert(config.includes('[features]'), 'features 配置块不存在')
+  assert(config.includes('multi_agent = true'), 'multi_agent 未启用')
+  assert(config.includes('shell_tool = true'), 'shell_tool 未启用')
+  assert(config.includes('shell_snapshot = true'), 'shell_snapshot 未启用')
+  assert(config.includes('fast_mode = true'), 'fast_mode 未启用')
+  assert(!config.includes('apply_patch_freeform'), '不应写入已移除的 apply_patch_freeform')
+  assert(!config.includes('elevated_windows_sandbox'), '不应写入旧 Windows sandbox feature')
+  assert(!config.includes('profile ='), '不应写入旧 profile')
+  assert(!config.includes('[profiles.'), '不应写入旧 profiles 表')
   assert(config.includes('[model_providers.okmcode]'), 'okmcode provider 块不存在')
   assert(config.includes(OKMCODE_BASE_URLS.codex), 'Base URL 不存在')
 })
@@ -181,20 +204,25 @@ test('Gemini .env 应该包含认证信息', () => {
   const env = readTestConfig('gemini-env')
   assert(env.includes(`GEMINI_API_KEY=${TEST_API_KEY}`), 'API Key 不存在')
   assert(env.includes(`GOOGLE_GEMINI_BASE_URL=${OKMCODE_BASE_URLS.gemini}`), 'Base URL 不存在')
+  assert(env.includes('GEMINI_MODEL=gemini-3.5-flash'), 'Gemini 默认模型不正确')
 })
 
 test('OpenCode 配置应该包含 OKMCode provider', () => {
   const config = readTestConfig('opencode')
+  assert(config.model === 'okmcode/gpt-5.5', 'OpenCode 默认模型不正确')
   assert(config.provider.okmcode.name === 'OKMCode', 'Provider 名称不正确')
   assert(config.provider.okmcode.options.apiKey === TEST_API_KEY, 'API Key 不正确')
   assert(config.provider.okmcode.options.baseURL === OKMCODE_BASE_URLS.opencode, 'Base URL 不正确')
+  assert(config.provider.okmcode.models['gpt-5.5'].options.store === false, '模型 store 不正确')
+  assert(config.agent.build.options.store === false, 'build store 不正确')
+  assert(config.agent.plan.options.store === false, 'plan store 不正确')
 })
 
 // ============================================================================
-// 测试 2: setup-okmcode-standalone.mjs - 保护模式（保留现有配置）
+// 测试 2: setup-okmcode-standalone.mjs - 快捷覆盖模式（替换已有配置）
 // ============================================================================
 
-console.log('\n📋 测试 2: 独立脚本 - 保护模式（保留现有配置）\n')
+console.log('\n📋 测试 2: 独立脚本 - 快捷覆盖模式（替换已有配置）\n')
 
 // 创建包含自定义配置的文件
 createTestConfig('claude', {
@@ -242,19 +270,35 @@ createTestConfig('opencode', {
 const result2 = runScript('scripts/setup-okmcode-standalone.mjs', [TEST_API_KEY])
 assert(result2.success, '脚本执行失败')
 
-test('Claude 应该保留自定义字段', () => {
+test('Claude 应该写入托管默认配置', () => {
   const config = readTestConfig('claude')
+  assert(config.model === 'sonnet', 'Claude 默认模型不正确')
   assert(config.env.ANTHROPIC_AUTH_TOKEN === TEST_API_KEY, 'API Key 未更新')
   assert(config.env.ANTHROPIC_BASE_URL === OKMCODE_BASE_URLS.claude, 'Base URL 未更新')
-  assert(config.env.CUSTOM_ENV === 'should-be-preserved', '自定义 env 丢失')
-  assert(config.permissions.allow[0] === 'custom-permission', 'permissions 丢失')
-  assert(config.customField === 'custom-value', '自定义字段丢失')
+  assert(config.env.CUSTOM_ENV === undefined, '自定义 env 不应保留')
+  assert(config.permissions.allow.length === 0, 'permissions 应该重置为空')
+  assert(config.customField === undefined, '自定义字段不应保留')
 })
 
-test('Gemini .env 应该保留其他变量', () => {
+test('Claude settings.json 应该在覆盖前备份', () => {
+  const backup = JSON.parse(
+    fs.readFileSync(path.join(TEST_HOME, '.claude/settings.json.bak'), 'utf-8')
+  )
+  assert(backup.env.ANTHROPIC_AUTH_TOKEN === 'old-key', 'Claude 备份认证信息不正确')
+  assert(backup.customField === 'custom-value', 'Claude 备份未保留原字段')
+})
+
+test('Gemini .env 应该写入托管默认配置', () => {
   const env = readTestConfig('gemini-env')
-  assert(env.includes('CUSTOM_VAR=custom-value'), '自定义变量丢失')
+  assert(!env.includes('CUSTOM_VAR=custom-value'), '自定义变量不应保留')
   assert(env.includes(`GEMINI_API_KEY=${TEST_API_KEY}`), 'API Key 未更新')
+  assert(env.includes('GEMINI_MODEL=gemini-3.5-flash'), '默认模型未更新')
+})
+
+test('Gemini .env 应该在覆盖前备份', () => {
+  const backup = fs.readFileSync(path.join(TEST_HOME, '.gemini/.env.bak'), 'utf-8')
+  assert(backup.includes('CUSTOM_VAR=custom-value'), 'Gemini 备份未保留原变量')
+  assert(backup.includes('GEMINI_API_KEY=old-key'), 'Gemini 备份认证信息不正确')
 })
 
 test('Codex auth.json 应该备份并覆盖写入（仅保留 OPENAI_API_KEY）', () => {
@@ -287,42 +331,54 @@ test('Codex config.toml 应该备份并覆盖写入', () => {
   assert(backup.includes('custom_field = "should-be-removed"'), '备份未保留原字段')
 })
 
-test('OpenCode 应该保留其他 provider', () => {
+test('OpenCode 应该写入托管默认配置', () => {
   const config = readTestConfig('opencode')
-  assert(config.provider.other, '其他 provider 丢失')
-  assert(config.provider.other.name === 'Other Provider', '其他 provider 内容丢失')
+  assert(config.provider.other === undefined, '其他 provider 不应保留')
   assert(config.provider.okmcode, 'OKMCode provider 未添加')
+  assert(config.model === 'okmcode/gpt-5.5', 'OpenCode 默认模型不正确')
+})
+
+test('OpenCode opencode.json 应该在覆盖前备份', () => {
+  const backup = JSON.parse(
+    fs.readFileSync(path.join(TEST_HOME, '.config/opencode/opencode.json.bak'), 'utf-8')
+  )
+  assert(backup.provider.other.name === 'Other Provider', 'OpenCode 备份未保留原 provider')
 })
 
 // ============================================================================
-// 测试 3: setup-okmcode-standalone.mjs - 全覆盖模式
+// 测试 3: @2ue/aicoding Codex 快捷覆盖配置
 // ============================================================================
 
-console.log('\n📋 测试 3: 独立脚本 - 全覆盖模式\n')
+console.log('\n📋 测试 3: @2ue/aicoding Codex 快捷覆盖配置\n')
 
-// 清理并重新创建配置
-cleanup()
-fs.mkdirSync(TEST_HOME, { recursive: true })
+const aicodingResult = runScript('packages/aicoding/bin/aicoding.js', [
+  TEST_API_KEY,
+  '--platform',
+  'codex',
+  '--base-url',
+  OKMCODE_BASE_URLS.codex,
+])
 
-createTestConfig('claude', {
-  env: {
-    ANTHROPIC_AUTH_TOKEN: 'old-key',
-    CUSTOM_ENV: 'will-be-lost',
-  },
-  customField: 'will-be-lost',
+test('aicoding 应该生成当前 Codex 配置且不包含废弃字段', () => {
+  assert(aicodingResult.success, `脚本执行失败: ${aicodingResult.error}`)
+  const config = readTestConfig('codex')
+  assert(config.includes('model_reasoning_effort = "xhigh"'), '推理强度不正确')
+  assert(config.includes('plan_mode_reasoning_effort = "xhigh"'), 'Plan 推理强度不正确')
+  assert(config.includes('sandbox_mode = "danger-full-access"'), 'sandbox_mode 不正确')
+  assert(config.includes('approval_policy = "never"'), 'approval_policy 不正确')
+  assert(config.includes('[features]'), 'features 配置块不存在')
+  assert(config.includes('multi_agent = true'), 'multi_agent 未启用')
+  assert(!config.includes('disable_response_storage'), '不应写入 disable_response_storage')
+  assert(!config.includes('windows_wsl_setup_acknowledged'), '不应写入旧 WSL 确认字段')
+  assert(!config.includes('apply_patch_freeform'), '不应写入已移除 feature')
+  assert(!config.includes('elevated_windows_sandbox'), '不应写入旧 Windows sandbox feature')
 })
-
-// 注意：全覆盖模式需要交互式确认，这里我们需要模拟输入 'y'
-// 由于测试环境限制，我们跳过这个测试或者修改脚本支持 --force 参数
-
-console.log('⚠️  全覆盖模式需要交互式确认，跳过自动测试')
-console.log('   手动测试命令: node scripts/setup-okmcode-standalone.mjs --overwrite\n')
 
 // ============================================================================
 // 测试 4: setup-okmcode.mjs（基于 anyaitools）
 // ============================================================================
 
-console.log('📋 测试 4: 基于 anyaitools 的脚本\n')
+console.log('\n📋 测试 4: 基于 anyaitools 的脚本\n')
 
 // 检查是否已构建（检查 dist 目录）
 const coreDistPath = path.join(process.cwd(), 'packages/core/dist/index.js')
@@ -334,10 +390,10 @@ if (!fs.existsSync(coreDistPath)) {
   process.env.NODE_ENV = 'test'
   process.env.HOME = TEST_HOME
 
-  const result4 = runScript('scripts/setup-okmcode.mjs', [TEST_API_KEY])
+  const result3 = runScript('scripts/setup-okmcode.mjs', [TEST_API_KEY])
 
   test('基于 anyaitools 的脚本应该成功执行', () => {
-    assert(result4.success, `脚本执行失败: ${result4.error}`)
+    assert(result3.success, `脚本执行失败: ${result3.error}`)
   })
 
   test('应该创建 anyaitools 配置文件', () => {

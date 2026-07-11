@@ -4,8 +4,8 @@
  * 一键修改所有包的版本号
  *
  * 用法:
- *   node scripts/bump-version.js 3.0.3
- *   npm run version 3.0.3
+ *   node scripts/bump-version.js 0.0.2
+ *   npm run version 0.0.2
  */
 
 const fs = require('fs')
@@ -16,7 +16,7 @@ const newVersion = process.argv[2]
 if (!newVersion) {
   console.error('❌ 请提供版本号')
   console.log('用法: node scripts/bump-version.js <version>')
-  console.log('示例: node scripts/bump-version.js 3.0.3')
+  console.log('示例: node scripts/bump-version.js 0.0.2')
   process.exit(1)
 }
 
@@ -35,6 +35,7 @@ const files = [
   'packages/cli/package.json',
   'packages/desktop/package.json',
   'packages/aicoding/package.json',
+  'packages/types/package.json',
 ]
 
 console.log(`\n🔄 将所有包版本号修改为: ${newVersion}\n`)

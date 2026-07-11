@@ -58,6 +58,8 @@ import {
   toggleMCPForApp,
   getMCPAppStatus,
   getMCPConfigPath,
+  getCodexSettings,
+  setCodexPreserveProviderName,
 } from '@anyaitools/core'
 import type {
   AddProviderInput,
@@ -226,8 +228,9 @@ function createWindow() {
 
   // 加载渲染进程
   if (isDev) {
-    console.log('[Main] Loading dev server: http://localhost:5173')
-    mainWindow.loadURL('http://localhost:5173')
+    const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
+    console.log('[Main] Loading dev server:', devServerUrl)
+    mainWindow.loadURL(devServerUrl)
   } else {
     const htmlPath = path.join(__dirname, '../renderer/index.html')
     console.log('[Main] Loading production file:', htmlPath)
@@ -313,6 +316,14 @@ ipcMain.handle('codex:get-current', async () => {
   const manager = createCodexManager()
   return manager.getCurrent()
 })
+
+// 获取 Codex 切换设置
+ipcMain.handle('codex:get-settings', async () => getCodexSettings())
+
+// 设置切换时是否保留 config.toml 顶层 model_provider
+ipcMain.handle('codex:set-preserve-provider-name', async (_event, enabled: boolean) =>
+  setCodexPreserveProviderName(enabled)
+)
 
 // 根据名称查找 Codex provider
 ipcMain.handle('codex:find-by-name', async (_event, name: string) => {
@@ -835,7 +846,7 @@ ipcMain.handle(
               '# 也可以手动创建，例如：\n' +
               '# GOOGLE_GEMINI_BASE_URL=https://okmcode.com\n' +
               '# GEMINI_API_KEY=YOUR_OKMCODE_TOKEN_HERE\n' +
-              '# GEMINI_MODEL=gemini-2.5-pro\n',
+              '# GEMINI_MODEL=gemini-3.5-flash\n',
             language: 'env',
           })
         }

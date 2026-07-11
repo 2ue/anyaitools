@@ -310,12 +310,12 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new ProviderNotFoundError(id)
       }
 
+      // 先确认目标工具配置写入成功，避免失败后仍把内部状态标记为已切换。
+      toolConfig.writer(provider, options)
+
       config.currentProviderId = id
       provider.lastUsedAt = Date.now()
       saveConfig(config)
-
-      // 使用配置映射的 writer（零 if-else）
-      toolConfig.writer(provider, options)
     },
 
     getCurrent(): Provider | null {
@@ -342,6 +342,8 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new ProviderNotFoundError(id)
       }
 
+      const originalProvider = { ...provider }
+
       if (normalizedUpdates.name !== undefined && !normalizedUpdates.name) {
         throw new Error('服务商名称不能为空')
       }
@@ -366,14 +368,20 @@ function createToolManager(tool: ToolType): ToolManager {
       provider.lastModified = Date.now()
       saveConfig(config)
 
-      // 如果是当前激活的 provider,重新写入配置
-      if (shouldApplyWrite && config.currentProviderId === id) {
-        toolConfig.writer(provider)
-      }
+      try {
+        // 如果是当前激活的 provider,重新写入配置
+        if (shouldApplyWrite && config.currentProviderId === id) {
+          toolConfig.writer(provider)
+        }
 
-      // 如果配置了自动同步，则立即同步配置（即使不是当前激活的）
-      if (shouldApplyWrite && toolConfig.autoSync) {
-        toolConfig.writer(provider)
+        // 如果配置了自动同步，则立即同步配置（即使不是当前激活的）
+        if (shouldApplyWrite && toolConfig.autoSync) {
+          toolConfig.writer(provider)
+        }
+      } catch (error) {
+        Object.assign(provider, originalProvider)
+        saveConfig(config)
+        throw error
       }
 
       return provider
