@@ -236,7 +236,7 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
 
-      - name: Publish anyaitools CLI (OIDC trusted publishing)
+      - name: Publish anyaitools CLI
         run: |
           cd packages/cli
           if npm view anyaitools@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
@@ -244,8 +244,10 @@ jobs:
           else
             npm publish --access public --provenance
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish aicoding (OIDC trusted publishing)
+      - name: Publish aicoding
         run: |
           cd packages/aicoding
           if npm view @2ue/aicoding@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
@@ -253,6 +255,8 @@ jobs:
           else
             npm publish --access public --provenance
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Restore original package.json
         if: always()
