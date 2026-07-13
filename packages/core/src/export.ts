@@ -14,7 +14,7 @@ import { backupConfig } from './sync/merge.js'
 /**
  * 配置文件名称
  */
-const SUPPORTED_CONFIG_FILES = ['codex.json', 'claude.json', 'openclaw.json'] as const
+const SUPPORTED_CONFIG_FILES = ['codex.json', 'claude.json', 'openclaw.json', 'grok.json'] as const
 type SupportedConfigFile = (typeof SUPPORTED_CONFIG_FILES)[number]
 
 /**

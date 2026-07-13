@@ -1,8 +1,8 @@
 {
-  "name": "anyaitools",
+  "name": "@vebing-tools/anyaitools",
   "version": "0.0.1",
   "type": "module",
-  "description": "CLI for the Any AI Tools workspace, managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
+  "description": "CLI for the Any AI Tools workspace, managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, Grok Build, and MCP",
   "main": "./dist/index.js",
   "bin": {
     "aat": "./dist/index.js"
@@ -11,10 +11,14 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "NODE_ENV=development tsx src/index.ts",
-    "test": "tsx --test src/utils/*.test.ts src/commands/sync/*.test.ts",
+    "test": "tsx --test src/utils/*.test.ts src/commands/*/*.test.ts",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -25,6 +29,9 @@
     "gemini-cli",
     "opencode",
     "openclaw",
+    "grok",
+    "grok-build",
+    "xai",
     "mcp",
     "model-context-protocol",
     "ai",

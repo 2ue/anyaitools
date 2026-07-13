@@ -5,10 +5,10 @@
  * 功能：直接修改 Codex、OpenCode、OpenClaw 的配置文件
  *
  * 用法：
- *   npx @2ue/aicoding                                        # 交互式输入（快捷覆盖模式）
- *   npx @2ue/aicoding sk-ant-xxx                             # 直接传入 API Key（快捷覆盖模式）
- *   npx @2ue/aicoding --overwrite                            # 兼容旧参数（行为不变）
- *   npx @2ue/aicoding sk-ant-xxx --overwrite                 # 兼容旧参数（行为不变）
+ *   npx @vebing-tools/aicoding                               # 交互式输入（快捷覆盖模式）
+ *   npx @vebing-tools/aicoding sk-ant-xxx                    # 直接传入 API Key（快捷覆盖模式）
+ *   npx @vebing-tools/aicoding --overwrite                   # 兼容旧参数（行为不变）
+ *   npx @vebing-tools/aicoding sk-ant-xxx --overwrite        # 兼容旧参数（行为不变）
  *
  * 策略说明：
  *   - 快捷配置入口统一采用覆盖写入：直接落下选中工具的托管配置

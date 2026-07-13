@@ -8,6 +8,7 @@ import GeminiSvg from '@lobehub/icons-static-svg/icons/gemini.svg?react'
 import McpSvg from '@lobehub/icons-static-svg/icons/mcp.svg?react'
 import OpenCodeSvg from '@lobehub/icons-static-svg/icons/opencode.svg?react'
 import OpenClawSvg from '@lobehub/icons-static-svg/icons/openclaw.svg?react'
+import GrokSvg from '@lobehub/icons-static-svg/icons/grok.svg?react'
 
 interface BrandIconProps {
   className?: string
@@ -64,4 +65,8 @@ export function OpenCodeIcon(props: BrandIconProps) {
 
 export function OpenClawIcon(props: BrandIconProps) {
   return <SvgIcon SvgComponent={OpenClawSvg} {...props} />
+}
+
+export function GrokIcon(props: BrandIconProps) {
+  return <SvgIcon SvgComponent={GrokSvg} {...props} />
 }

@@ -67,8 +67,30 @@ export default function ProviderList({
                 </div>
                 <div className="flex min-w-0 flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:gap-3">
                   <span className="truncate font-mono" title={provider.baseUrl}>
-                    {provider.baseUrl}
+                    {tool === 'grok' && !provider.baseUrl
+                      ? 'Grok Build 内置模型'
+                      : provider.baseUrl}
                   </span>
+                  {tool === 'grok' && (
+                    <span className="flex min-w-0 items-center gap-1.5 truncate sm:border-l sm:border-gray-200 sm:pl-3">
+                      <span className="truncate font-mono" title={provider.model}>
+                        {provider.model}
+                      </span>
+                      {provider.baseUrl && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="truncate">
+                            {provider.apiBackend || 'chat_completions'}
+                          </span>
+                          {provider.supportsBackendSearch && (
+                            <span className="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5">
+                              Search
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  )}
                   {provider.desc && (
                     <span
                       className="truncate sm:border-l sm:border-gray-200 sm:pl-3"

@@ -8,4 +8,5 @@ export {
   McpIcon,
   OpenCodeIcon,
   OpenClawIcon,
+  GrokIcon,
 } from './BrandIcons'

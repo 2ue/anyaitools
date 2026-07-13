@@ -257,7 +257,7 @@ function main() {
   console.log('\n' + '='.repeat(60))
   console.log('\n✨ 测试完成！数据转换正确。')
   console.log('\n💡 下一步: 运行实际迁移命令')
-  console.log('   pnpm --filter @anyaitools/cli migrate\n')
+  console.log('   pnpm --filter @vebing-tools/anyaitools migrate\n')
 }
 
 main()

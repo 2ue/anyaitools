@@ -7,6 +7,7 @@ const TOOL_COLORS: Record<string, chalk.Chalk> = {
   gemini: chalk.hex('#4285F4'), // Google 蓝
   opencode: chalk.hex('#FF6B35'), // 活力橙
   openclaw: chalk.hex('#E74C3C'), // 红色
+  grok: chalk.hex('#38BDF8'), // Grok 终端蓝
   mcp: chalk.hex('#9B59B6'), // 紫色
 }
 
@@ -17,6 +18,7 @@ const TOOL_NAMES: Record<string, string> = {
   gemini: 'Gemini CLI',
   opencode: 'OpenCode',
   openclaw: 'OpenClaw',
+  grok: 'Grok Build',
   mcp: 'MCP',
 }
 

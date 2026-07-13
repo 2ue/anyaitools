@@ -1,7 +1,7 @@
 /**
  * 工具管理器（Tool Manager）
  *
- * 统一管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw 和 MCP 的服务商配置
+ * 统一管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw、Grok CLI 和 MCP 的服务商配置
  * 采用工厂模式 + 数据驱动设计，零 if-else，易扩展
  *
  * 文件结构：
@@ -32,11 +32,15 @@ import { MCP_PRESETS } from './presets/mcp.js'
 import { GEMINI_PRESETS } from './presets/gemini.js'
 import { OPENCODE_PRESETS } from './presets/opencode.js'
 import { OPENCLAW_PRESETS } from './presets/openclaw.js'
+import { GROK_PRESETS } from './presets/grok.js'
 import { writeGeminiConfig } from './writers/gemini.js'
 import { writeOpenCodeConfig } from './writers/opencode.js'
 import { writeOpenClawConfig } from './writers/openclaw.js'
+import { removeGrokConfig, writeGrokConfig } from './writers/grok.js'
+import { validateGrokPreset, validateGrokProvider } from './grok-provider.js'
 import type {
   ToolType,
+  ApiBackend,
   Provider,
   PresetTemplate,
   InternalPresetTemplate,
@@ -58,6 +62,7 @@ import {
 // 重新导出类型，保持向后兼容
 export type {
   ToolType,
+  ApiBackend,
   Provider,
   PresetTemplate,
   WriteOptions,
@@ -76,9 +81,15 @@ export { ProviderNotFoundError, ProviderNameConflictError, PresetNameConflictErr
  * 扩展性：添加新工具只需在此添加配置项
  */
 interface ToolConfigMapping {
-  configPath: string
+  configFilename: string
   builtinPresets: InternalPresetTemplate[]
   writer: (provider: Provider, options?: WriteOptions) => void
+  /** 删除 provider 时同步清理目标工具配置（可选） */
+  remover?: (provider: Provider, isCurrent: boolean) => void
+  /** 保存 provider 前执行工具专属校验（可选） */
+  validateProvider?: (provider: AddProviderInput) => void
+  /** 保存 preset 前执行工具专属校验（可选） */
+  validatePreset?: (preset: AddPresetInput) => void
   /** 是否在每个操作（add/edit/remove）后自动同步配置 */
   autoSync?: boolean
   /** 自定义配置加载器（可选，用于特殊配置格式如 MCP）*/
@@ -89,17 +100,17 @@ interface ToolConfigMapping {
 
 const TOOL_CONFIGS: Record<ToolType, ToolConfigMapping> = {
   codex: {
-    configPath: path.join(getAnyAIToolsDir(), 'codex.json'),
+    configFilename: 'codex.json',
     builtinPresets: CODEX_PRESETS,
     writer: writeCodexConfig,
   },
   claude: {
-    configPath: path.join(getAnyAIToolsDir(), 'claude.json'),
+    configFilename: 'claude.json',
     builtinPresets: CC_PRESETS,
     writer: writeClaudeConfig,
   },
   mcp: {
-    configPath: path.join(getAnyAIToolsDir(), 'mcp.json'),
+    configFilename: 'mcp.json',
     builtinPresets: MCP_PRESETS,
     writer: writeMCPConfig,
     autoSync: true, // MCP 需要在每个操作后自动同步到 ~/.claude.json
@@ -135,19 +146,27 @@ const TOOL_CONFIGS: Record<ToolType, ToolConfigMapping> = {
     },
   },
   gemini: {
-    configPath: path.join(getAnyAIToolsDir(), 'gemini.json'),
+    configFilename: 'gemini.json',
     builtinPresets: GEMINI_PRESETS,
     writer: writeGeminiConfig,
   },
   opencode: {
-    configPath: path.join(getAnyAIToolsDir(), 'opencode.json'),
+    configFilename: 'opencode.json',
     builtinPresets: OPENCODE_PRESETS,
     writer: writeOpenCodeConfig,
   },
   openclaw: {
-    configPath: path.join(getAnyAIToolsDir(), 'openclaw.json'),
+    configFilename: 'openclaw.json',
     builtinPresets: OPENCLAW_PRESETS,
     writer: writeOpenClawConfig,
+  },
+  grok: {
+    configFilename: 'grok.json',
+    builtinPresets: GROK_PRESETS,
+    writer: writeGrokConfig,
+    remover: removeGrokConfig,
+    validateProvider: validateGrokProvider,
+    validatePreset: validateGrokPreset,
   },
 }
 
@@ -165,7 +184,7 @@ const TOOL_CONFIGS: Record<ToolType, ToolConfigMapping> = {
 // eslint-disable-next-line max-lines-per-function
 function createToolManager(tool: ToolType): ToolManager {
   const toolConfig = TOOL_CONFIGS[tool]
-  const configPath = toolConfig.configPath
+  const configPath = path.join(getAnyAIToolsDir(), toolConfig.configFilename)
 
   /**
    * 生成唯一 ID
@@ -250,6 +269,8 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new Error('服务商名称不能为空')
       }
 
+      toolConfig.validateProvider?.(normalizedInput)
+
       // 检查名称冲突
       const nameExists = config.providers.some((p) => p.name.trim() === normalizedInput.name)
       if (nameExists) {
@@ -264,6 +285,8 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: normalizedInput.baseUrl,
         apiKey: normalizedInput.apiKey,
         model: normalizedInput.model,
+        apiBackend: normalizedInput.apiBackend,
+        supportsBackendSearch: normalizedInput.supportsBackendSearch,
         createdAt: timestamp,
         lastModified: timestamp,
       }
@@ -348,6 +371,17 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new Error('服务商名称不能为空')
       }
 
+      toolConfig.validateProvider?.({
+        name: normalizedUpdates.name ?? provider.name,
+        desc: normalizedUpdates.desc ?? provider.desc,
+        baseUrl: normalizedUpdates.baseUrl ?? provider.baseUrl,
+        apiKey: normalizedUpdates.apiKey ?? provider.apiKey,
+        model: normalizedUpdates.model ?? provider.model,
+        apiBackend: normalizedUpdates.apiBackend ?? provider.apiBackend,
+        supportsBackendSearch:
+          normalizedUpdates.supportsBackendSearch ?? provider.supportsBackendSearch,
+      })
+
       // 检查名称冲突
       if (normalizedUpdates.name !== undefined && normalizedUpdates.name !== provider.name.trim()) {
         const nameConflict = config.providers.some(
@@ -364,6 +398,10 @@ function createToolManager(tool: ToolType): ToolManager {
       if (normalizedUpdates.baseUrl !== undefined) provider.baseUrl = normalizedUpdates.baseUrl
       if (normalizedUpdates.apiKey !== undefined) provider.apiKey = normalizedUpdates.apiKey
       if (normalizedUpdates.model !== undefined) provider.model = normalizedUpdates.model
+      if (normalizedUpdates.apiBackend !== undefined)
+        provider.apiBackend = normalizedUpdates.apiBackend
+      if (normalizedUpdates.supportsBackendSearch !== undefined)
+        provider.supportsBackendSearch = normalizedUpdates.supportsBackendSearch
 
       provider.lastModified = Date.now()
       saveConfig(config)
@@ -395,7 +433,13 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new ProviderNotFoundError(id)
       }
 
-      if (config.currentProviderId === id) {
+      const provider = config.providers[index]
+      const isCurrent = config.currentProviderId === id
+      if (toolConfig.remover) {
+        toolConfig.remover(provider, isCurrent)
+      }
+
+      if (isCurrent) {
         config.currentProviderId = undefined
       }
 
@@ -450,11 +494,14 @@ function createToolManager(tool: ToolType): ToolManager {
         name: input.name.trim(),
         baseUrl: input.baseUrl.trim(),
         description: input.description.trim(),
+        model: trimInput(input.model),
       }
 
       if (!normalizedInput.name) {
         throw new Error('预置名称不能为空')
       }
+
+      toolConfig.validatePreset?.(normalizedInput)
 
       if (!config.presets) {
         config.presets = []
@@ -471,6 +518,9 @@ function createToolManager(tool: ToolType): ToolManager {
         name: normalizedInput.name,
         baseUrl: normalizedInput.baseUrl,
         description: normalizedInput.description,
+        model: normalizedInput.model,
+        apiBackend: normalizedInput.apiBackend,
+        supportsBackendSearch: normalizedInput.supportsBackendSearch,
       }
 
       config.presets.push(preset)
@@ -510,6 +560,7 @@ function createToolManager(tool: ToolType): ToolManager {
         name: trimInput(updates.name),
         baseUrl: trimInput(updates.baseUrl),
         description: trimInput(updates.description),
+        model: trimInput(updates.model),
       }
 
       if (!config.presets) {
@@ -526,6 +577,16 @@ function createToolManager(tool: ToolType): ToolManager {
         throw new Error('预置名称不能为空')
       }
 
+      toolConfig.validatePreset?.({
+        name: normalizedUpdates.name ?? preset.name,
+        baseUrl: normalizedUpdates.baseUrl ?? preset.baseUrl,
+        description: normalizedUpdates.description ?? preset.description,
+        model: normalizedUpdates.model ?? preset.model,
+        apiBackend: normalizedUpdates.apiBackend ?? preset.apiBackend,
+        supportsBackendSearch:
+          normalizedUpdates.supportsBackendSearch ?? preset.supportsBackendSearch,
+      })
+
       // 检查名称冲突
       if (normalizedUpdates.name !== undefined && normalizedUpdates.name !== preset.name.trim()) {
         const allPresets = [...toolConfig.builtinPresets, ...config.presets]
@@ -541,6 +602,11 @@ function createToolManager(tool: ToolType): ToolManager {
       if (normalizedUpdates.baseUrl !== undefined) preset.baseUrl = normalizedUpdates.baseUrl
       if (normalizedUpdates.description !== undefined)
         preset.description = normalizedUpdates.description
+      if (normalizedUpdates.model !== undefined) preset.model = normalizedUpdates.model
+      if (normalizedUpdates.apiBackend !== undefined)
+        preset.apiBackend = normalizedUpdates.apiBackend
+      if (normalizedUpdates.supportsBackendSearch !== undefined)
+        preset.supportsBackendSearch = normalizedUpdates.supportsBackendSearch
 
       saveConfig(config)
 
@@ -611,4 +677,11 @@ export function createOpenCodeManager(): ToolManager {
  */
 export function createOpenClawManager(): ToolManager {
   return createToolManager('openclaw')
+}
+
+/**
+ * 创建 Grok CLI 管理器（对外 API）
+ */
+export function createGrokManager(): ToolManager {
+  return createToolManager('grok')
 }

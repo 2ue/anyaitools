@@ -1,4 +1,4 @@
-# @2ue/aicoding
+# @vebing-tools/aicoding
 
 一键配置 OKMCode 到 AI 编程工具（Codex、OpenCode、OpenClaw）。
 
@@ -17,13 +17,13 @@
 ### `npx`
 
 ```bash
-npx @2ue/aicoding
+npx @vebing-tools/aicoding
 ```
 
 ### 全局安装
 
 ```bash
-npm install -g @2ue/aicoding
+npm install -g @vebing-tools/aicoding
 aicoding
 ```
 
@@ -38,38 +38,38 @@ curl -fsSL https://raw.githubusercontent.com/2ue/anyaitools/main/scripts/aicodin
 ### 交互式
 
 ```bash
-npx @2ue/aicoding
+npx @vebing-tools/aicoding
 ```
 
 ### 直接传入 API Key
 
 ```bash
-npx @2ue/aicoding sk-ant-xxx
+npx @vebing-tools/aicoding sk-ant-xxx
 ```
 
 ### 指定平台
 
 ```bash
 # 仅配置 Codex + OpenCode
-npx @2ue/aicoding sk-ant-xxx -p codex,opencode
+npx @vebing-tools/aicoding sk-ant-xxx -p codex,opencode
 
 # 包含 OpenClaw
-npx @2ue/aicoding sk-ant-xxx -p codex,opencode,openclaw
+npx @vebing-tools/aicoding sk-ant-xxx -p codex,opencode,openclaw
 
 # 所有支持平台
-npx @2ue/aicoding sk-ant-xxx -p all
+npx @vebing-tools/aicoding sk-ant-xxx -p all
 ```
 
 ### 指定 OpenAI Base URL
 
 ```bash
-npx @2ue/aicoding sk-ant-xxx --openai-base-url https://okmcode.com
+npx @vebing-tools/aicoding sk-ant-xxx --openai-base-url https://okmcode.com
 ```
 
 ### 兼容旧参数
 
 ```bash
-npx @2ue/aicoding sk-ant-xxx --overwrite
+npx @vebing-tools/aicoding sk-ant-xxx --overwrite
 ```
 
 `--overwrite` 仍可使用，但当前版本的快捷入口本身就采用覆盖写入，因此该参数只是兼容旧用法。
@@ -105,7 +105,7 @@ npx @2ue/aicoding sk-ant-xxx --overwrite
 
 ## 与 `anyaitools` 的区别
 
-| 特性 | `@2ue/aicoding` | `anyaitools` |
+| 特性 | `@vebing-tools/aicoding` | `@vebing-tools/anyaitools` |
 | --- | --- | --- |
 | 用途 | 快捷配置 OKMCode | 完整 provider 管理 |
 | 写入语义 | 快捷覆盖 | 常规管理增量，快捷命令覆盖 |
@@ -113,5 +113,5 @@ npx @2ue/aicoding sk-ant-xxx --overwrite
 
 ## 建议
 
-- 只想快速把 OKMCode 落到工具配置里：用 `@2ue/aicoding`
-- 需要长期维护多个 provider：用 `anyaitools`
+- 只想快速把 OKMCode 落到工具配置里：用 `@vebing-tools/aicoding`
+- 需要长期维护多个 provider：用 `@vebing-tools/anyaitools`

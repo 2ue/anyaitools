@@ -36,6 +36,8 @@ export interface SyncData {
   gemini: ToolConfigForSync
   /** OpenClaw 配置 */
   openclaw: ToolConfigForSync
+  /** Grok CLI 配置（兼容旧同步数据时可缺省） */
+  grok?: ToolConfigForSync
 }
 
 /**

@@ -8,6 +8,7 @@
  * - startGeminiMenu(): Gemini 菜单（aat gm）
  * - startOpenCodeMenu(): OpenCode 菜单（aat oc）
  * - startOpenClawMenu(): OpenClaw 菜单（aat openclaw / aat ow）
+ * - startGrokMenu(): Grok Build 菜单（aat grok / aat gk）
  */
 
 import inquirer from 'inquirer'
@@ -18,7 +19,9 @@ import {
   createGeminiManager,
   createOpenCodeManager,
   createOpenClawManager,
+  createGrokManager,
   TOOL_TYPES,
+  type AddProviderInput,
   type ToolType,
   type ToolManager,
 } from '@anyaitools/core'
@@ -26,6 +29,7 @@ import { formatProviderTable } from './utils/format.js'
 import { promptConfirm } from './utils/confirm.js'
 import { toolBadge } from './utils/cli-theme.js'
 import { printSuccess, printInfo, printWarning, printTip } from './utils/cli-output.js'
+import { promptGrokProviderForm } from './commands/grok/form.js'
 
 // CLI 专用配置（命令缩写和显示名）
 const CLI_TOOL_CONFIG = {
@@ -34,6 +38,7 @@ const CLI_TOOL_CONFIG = {
   [TOOL_TYPES.GEMINI]: { name: 'Gemini', emoji: '💎', cmd: 'gm' },
   [TOOL_TYPES.OPENCODE]: { name: 'OpenCode', emoji: '🧩', cmd: 'oc' },
   [TOOL_TYPES.OPENCLAW]: { name: 'OpenClaw', emoji: '🦀', cmd: 'ow' },
+  [TOOL_TYPES.GROK]: { name: 'Grok Build', emoji: '✕', cmd: 'grok' },
 } as const
 
 type CliToolType = Exclude<ToolType, 'mcp'>
@@ -53,6 +58,8 @@ function getManager(tool: CliToolType): ToolManager {
       return createOpenCodeManager()
     case TOOL_TYPES.OPENCLAW:
       return createOpenClawManager()
+    case TOOL_TYPES.GROK:
+      return createGrokManager()
   }
 }
 
@@ -152,6 +159,7 @@ export async function startMainMenu(): Promise<void> {
           { name: '💎 Gemini 管理', value: 'gemini' },
           { name: '🧩 OpenCode 管理', value: 'opencode' },
           { name: '🦀 OpenClaw 管理', value: 'openclaw' },
+          { name: '✕ Grok Build 管理', value: 'grok' },
           { name: '🔄 WebDAV 同步', value: 'sync' },
           { name: '📦 预置服务商管理', value: 'presets' },
           { name: '❌ 退出', value: 'exit' },
@@ -174,6 +182,8 @@ export async function startMainMenu(): Promise<void> {
       await startOpenCodeMenu()
     } else if (choice === 'openclaw') {
       await startOpenClawMenu()
+    } else if (choice === 'grok') {
+      await startGrokMenu()
     } else if (choice === 'sync') {
       const { startSyncMenu } = await import('./commands/sync/index.js')
       await startSyncMenu()
@@ -236,6 +246,17 @@ export async function startOpenCodeMenu(): Promise<void> {
  */
 export async function startOpenClawMenu(): Promise<void> {
   await showToolMenu(TOOL_TYPES.OPENCLAW)
+}
+
+// ============================================================================
+// Grok Build 菜单
+// ============================================================================
+
+/**
+ * Grok Build 菜单 - aat grok / aat gk 入口
+ */
+export async function startGrokMenu(): Promise<void> {
+  await showToolMenu(TOOL_TYPES.GROK)
 }
 
 // ============================================================================
@@ -346,6 +367,9 @@ async function handleAdd(tool: CliToolType): Promise<void> {
   let desc: string | undefined
   let baseUrl: string
   let apiKey: string
+  let model: string | undefined
+  let apiBackend: 'chat_completions' | 'responses' | 'messages' | undefined
+  let supportsBackendSearch: boolean | undefined
 
   if (usePreset) {
     // 使用预置
@@ -366,59 +390,97 @@ async function handleAdd(tool: CliToolType): Promise<void> {
     console.log(chalk.blue(`\n使用预设: ${preset.name} - ${preset.description}\n`))
 
     // 允许修改所有字段（与命令式和 Desktop 行为一致）
-    const input = await promptProviderForm({
-      name: preset.name,
-      desc: '',
-      baseUrl: preset.baseUrl,
-      apiKey: '',
-    })
+    const input: AddProviderInput =
+      tool === TOOL_TYPES.GROK
+        ? await promptGrokProviderForm({
+            name: preset.name,
+            desc: '',
+            baseUrl: preset.baseUrl,
+            allowEmptyBaseUrl: preset.isBuiltIn && preset.baseUrl.trim() === '',
+            apiKey: '',
+            model: preset.model,
+            apiBackend: preset.apiBackend,
+            supportsBackendSearch: preset.supportsBackendSearch,
+          })
+        : await promptProviderForm({
+            name: preset.name,
+            desc: '',
+            baseUrl: preset.baseUrl,
+            apiKey: '',
+          })
 
     name = input.name
     // 不继承预置描述,使用用户输入的 desc(可能为空)
     desc = input.desc
     baseUrl = input.baseUrl
     apiKey = input.apiKey
+    model = input.model
+    apiBackend = input.apiBackend
+    supportsBackendSearch = input.supportsBackendSearch
   } else {
-    // 自定义
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: '服务商名称:',
-        validate: (value) => (value ? true : '名称不能为空'),
-      },
-      {
-        type: 'input',
-        name: 'baseUrl',
-        message: 'API 地址:',
-        validate: (value) => {
-          if (!value) return 'API 地址不能为空'
-          if (!value.startsWith('http://') && !value.startsWith('https://')) {
-            return 'API 地址必须以 http:// 或 https:// 开头'
-          }
-          return true
+    if (tool === TOOL_TYPES.GROK) {
+      const input = await promptGrokProviderForm({
+        apiKey: '',
+        apiBackend: 'chat_completions',
+        supportsBackendSearch: false,
+      })
+      name = input.name
+      desc = input.desc
+      baseUrl = input.baseUrl
+      apiKey = input.apiKey
+      model = input.model
+      apiBackend = input.apiBackend
+      supportsBackendSearch = input.supportsBackendSearch
+    } else {
+      // 自定义
+      const answers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'name',
+          message: '服务商名称:',
+          validate: (value) => (value ? true : '名称不能为空'),
         },
-      },
-      {
-        type: 'password',
-        name: 'apiKey',
-        message: 'API 密钥:',
-        mask: '*',
-        validate: (value) => (value ? true : 'API 密钥不能为空'),
-      },
-    ])
+        {
+          type: 'input',
+          name: 'baseUrl',
+          message: 'API 地址:',
+          validate: (value) => {
+            if (!value) return 'API 地址不能为空'
+            if (!value.startsWith('http://') && !value.startsWith('https://')) {
+              return 'API 地址必须以 http:// 或 https:// 开头'
+            }
+            return true
+          },
+        },
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: 'API 密钥:',
+          mask: '*',
+          validate: (value) => (value ? true : 'API 密钥不能为空'),
+        },
+      ])
 
-    name = answers.name
-    desc = undefined
-    baseUrl = answers.baseUrl
-    apiKey = answers.apiKey
+      name = answers.name
+      desc = undefined
+      baseUrl = answers.baseUrl
+      apiKey = answers.apiKey
+    }
   }
 
-  const provider = manager.add({ name, desc, baseUrl, apiKey })
+  const provider = manager.add({
+    name,
+    desc,
+    baseUrl,
+    apiKey,
+    ...(model !== undefined ? { model } : {}),
+    ...(apiBackend !== undefined ? { apiBackend } : {}),
+    ...(supportsBackendSearch !== undefined ? { supportsBackendSearch } : {}),
+  })
 
   printSuccess('添加成功', [
     `${chalk.bold(provider.name)} ${toolBadge(tool)}`,
-    chalk.gray(provider.baseUrl),
+    chalk.gray(provider.baseUrl || '(Grok 内置端点)'),
   ])
 
   // 询问是否切换
@@ -427,8 +489,11 @@ async function handleAdd(tool: CliToolType): Promise<void> {
   if (switchNow) {
     manager.switch(provider.id)
     printSuccess('已切换到新服务商')
+    if (tool === TOOL_TYPES.GROK) {
+      printTip(`核验最终有效配置: ${chalk.white('grok inspect')}`)
+    }
   } else {
-    printTip(`稍后切换: ${chalk.white(`anyaitools ${cmd} use "${provider.name}"`)}`)
+    printTip(`稍后切换: ${chalk.white(`aat ${cmd} use "${provider.name}"`)}`)
   }
 }
 
@@ -459,7 +524,11 @@ async function handleSwitch(tool: CliToolType): Promise<void> {
   printSuccess('切换成功', [
     `${chalk.bold(provider.name)} ${toolBadge(tool)}`,
     chalk.gray(provider.baseUrl),
+    ...(provider.model ? [chalk.gray(`模型: ${provider.model}`)] : []),
   ])
+  if (tool === TOOL_TYPES.GROK) {
+    printTip(`核验最终有效配置: ${chalk.white('grok inspect')}`)
+  }
 }
 
 async function handleList(tool: CliToolType): Promise<void> {
@@ -470,11 +539,15 @@ async function handleList(tool: CliToolType): Promise<void> {
 
   if (providers.length === 0) {
     printWarning(`暂无 ${tn} 服务商`)
-    printTip(`添加服务商: ${chalk.white(`anyaitools ${cmd} add`)}`)
+    printTip(`添加服务商: ${chalk.white(`aat ${cmd} add`)}`)
     return
   }
 
-  console.log(formatProviderTable(providers, current?.id, `${tn} 服务商 (${providers.length} 个)`))
+  console.log(
+    formatProviderTable(providers, current?.id, `${tn} 服务商 (${providers.length} 个)`, {
+      showModelDetails: tool === TOOL_TYPES.GROK,
+    })
+  )
 }
 
 async function handleCurrent(tool: CliToolType): Promise<void> {
@@ -484,15 +557,24 @@ async function handleCurrent(tool: CliToolType): Promise<void> {
 
   if (!current) {
     printWarning(`未选择任何 ${tn} 服务商`)
-    printTip(`选择服务商: ${chalk.white(`anyaitools ${cmd} use`)}`)
+    printTip(`选择服务商: ${chalk.white(`aat ${cmd} use`)}`)
     return
   }
 
   const lines = [
     chalk.green.bold(current.name),
     chalk.gray(`ID: ${current.id}`),
-    chalk.gray(`URL: ${current.baseUrl || '(默认端点)'}`),
+    chalk.gray(
+      `URL: ${current.baseUrl || (tool === TOOL_TYPES.GROK ? '(Grok 内置端点)' : '(默认端点)')}`
+    ),
   ]
+  if (current.model) lines.push(chalk.gray(`模型: ${current.model}`))
+  if (current.baseUrl && current.apiBackend) {
+    lines.push(chalk.gray(`API Backend: ${current.apiBackend}`))
+  }
+  if (current.baseUrl && current.supportsBackendSearch !== undefined) {
+    lines.push(chalk.gray(`Backend Search: ${current.supportsBackendSearch ? '启用' : '禁用'}`))
+  }
   if (current.lastUsedAt) {
     lines.push(chalk.gray(`最后使用: ${new Date(current.lastUsedAt).toLocaleString('zh-CN')}`))
   }
@@ -521,6 +603,25 @@ async function handleEdit(tool: CliToolType): Promise<void> {
   ])
 
   const provider = providers.find((p) => p.id === providerId)!
+
+  if (tool === TOOL_TYPES.GROK) {
+    const input = await promptGrokProviderForm({
+      name: provider.name,
+      desc: provider.desc,
+      baseUrl: provider.baseUrl,
+      allowEmptyBaseUrl: provider.baseUrl.trim() === '',
+      apiKey: provider.apiKey,
+      model: provider.model,
+      apiBackend: provider.apiBackend,
+      supportsBackendSearch: provider.supportsBackendSearch,
+    })
+    manager.edit(providerId, input)
+    printSuccess('编辑成功')
+    if (manager.getCurrent()?.id === providerId) {
+      printTip(`核验最终有效配置: ${chalk.white('grok inspect')}`)
+    }
+    return
+  }
 
   const answers = await inquirer.prompt([
     {
@@ -589,6 +690,25 @@ async function handleClone(tool: CliToolType): Promise<void> {
   ])
 
   const provider = providers.find((p) => p.id === providerId)!
+
+  if (tool === TOOL_TYPES.GROK) {
+    const input = await promptGrokProviderForm({
+      name: `${provider.name}（副本）`,
+      desc: '',
+      baseUrl: provider.baseUrl,
+      allowEmptyBaseUrl: provider.baseUrl.trim() === '',
+      apiKey: provider.apiKey,
+      model: provider.model,
+      apiBackend: provider.apiBackend,
+      supportsBackendSearch: provider.supportsBackendSearch,
+    })
+    const newProvider = manager.add(input)
+    printSuccess('克隆成功', [
+      chalk.bold(newProvider.name),
+      chalk.gray(newProvider.baseUrl || '(Grok 内置端点)'),
+    ])
+    return
+  }
 
   const answers = await inquirer.prompt([
     {

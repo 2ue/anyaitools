@@ -16,6 +16,7 @@
     "clean": "pnpm -r clean",
     "version": "node scripts/bump-version.js",
     "verify:versions": "node scripts/verify-versions.js",
+    "verify:publish-packages": "node scripts/verify-publish-packages.js",
     "changeset": "changeset",
     "changeset:check": "node scripts/check-changeset-required.js",
     "changeset:status": "changeset status",

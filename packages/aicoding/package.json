@@ -1,5 +1,5 @@
 {
-  "name": "@2ue/aicoding",
+  "name": "@vebing-tools/aicoding",
   "version": "0.0.1",
   "description": "一键配置 OKMCode 到 Codex、OpenCode、OpenClaw",
   "type": "module",
@@ -10,6 +10,10 @@
     "bin",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "okmcode",
     "codex",

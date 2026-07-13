@@ -301,7 +301,7 @@ const config = loadConfig()
 	   } catch (error) {
 	     if (error instanceof ProviderNotFoundError) {
 	       console.error(chalk.red(`❌ ${error.message}`))
-	       console.log(chalk.blue('💡 查看服务商列表: anyaitools cx list'))
+	       console.log(chalk.blue('💡 查看服务商列表: aat cx list'))
 	     } else {
 	       console.error(chalk.red(`❌ ${error.message}`))
 	     }
@@ -640,10 +640,11 @@ Closes #1
 
 ### 包发布说明
 
-**⚠️ 重要：CLI 是唯一发布到 npm 的包**
+**⚠️ 重要：只有 CLI 和 aicoding 发布到 npm**
 
-- **发布包**：只有 `packages/cli`（npm 包名：`anyaitools`）
-- **不发布**：`@anyaitools/core`、`@anyaitools/desktop` 不发布到 npm
+- **CLI 发布包**：`packages/cli`（npm 包名：`@vebing-tools/anyaitools`）
+- **快捷配置发布包**：`packages/aicoding`（npm 包名：`@vebing-tools/aicoding`）
+- **不发布**：`@anyaitools/core`、`@anyaitools/types`、`@anyaitools/desktop` 均为 private workspace 包
 - **构建方式**：CLI 直接打包 @anyaitools/core 源码到 bundle 中
 
 **CLI 构建原理**：
@@ -661,7 +662,7 @@ export default defineConfig({
 ```
 
 **为什么这样设计**：
-- ✅ 用户只需要 `npm install -g anyaitools`，无需关心 core 包
+- ✅ 用户只需要 `npm install -g @vebing-tools/anyaitools`，无需关心 core 包
 - ✅ CLI bundle 包含完整功能，无外部依赖
 - ✅ Core 作为内部模块，不需要发布和维护单独的 npm 包
 

@@ -7,6 +7,7 @@ import {
   McpIcon,
   OpenCodeIcon,
   OpenClawIcon,
+  GrokIcon,
 } from './icons/BrandIcons'
 import DashboardCard from './DashboardCard'
 
@@ -17,6 +18,7 @@ export type NavKey =
   | 'gemini'
   | 'opencode'
   | 'openclaw'
+  | 'grok'
   | 'mcp'
   | 'service-providers'
   | 'clean'
@@ -35,6 +37,7 @@ interface DashboardPageProps {
   geminiData: ToolData
   opencodeData: ToolData
   openclawData: ToolData
+  grokData: ToolData
   onEnterPage: (key: NavKey) => void
 }
 
@@ -44,6 +47,7 @@ export default function DashboardPage({
   geminiData,
   opencodeData,
   openclawData,
+  grokData,
   onEnterPage,
 }: DashboardPageProps) {
   return (
@@ -134,6 +138,19 @@ export default function DashboardPage({
               onClick={() => onEnterPage('openclaw')}
               isBrandIcon
             />
+
+            {/* Grok Build */}
+            <DashboardCard
+              icon={GrokIcon}
+              title="Grok Build"
+              statusLines={[
+                grokData.current ? `已配置：${grokData.current.name}` : '未配置',
+                `${grokData.providers.length} 个服务商`,
+              ]}
+              statusType={grokData.current ? 'success' : 'warning'}
+              onClick={() => onEnterPage('grok')}
+              isBrandIcon
+            />
           </div>
         </div>
 
@@ -165,7 +182,8 @@ export default function DashboardPage({
                   codexData.presetsCount +
                   geminiData.presetsCount +
                   opencodeData.presetsCount +
-                  openclawData.presetsCount
+                  openclawData.presetsCount +
+                  grokData.presetsCount
                 } 个模板`,
                 '快速添加服务商',
               ]}

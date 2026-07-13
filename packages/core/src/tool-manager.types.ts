@@ -8,6 +8,7 @@
 // 从 @anyaitools/types 重新导出共享类型
 export {
   type ToolType,
+  type ApiBackend,
   type Provider,
   type PresetTemplate,
   type AddProviderInput,
@@ -17,6 +18,7 @@ export {
 } from '@anyaitools/types'
 
 import type {
+  ApiBackend,
   Provider,
   PresetTemplate,
   AddProviderInput,
@@ -33,6 +35,9 @@ export interface InternalPresetTemplate {
   name: string
   baseUrl: string
   description: string
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
 
 /**

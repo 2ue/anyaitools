@@ -9,6 +9,7 @@ import { createMCPCommands } from './commands/mcp/index.js'
 import { createGeminiCommands } from './commands/gemini/index.js'
 import { createOpenCodeCommands } from './commands/opencode/index.js'
 import { createOpenClawCommands } from './commands/openclaw/index.js'
+import { registerGrokCommands } from './commands/grok/index.js'
 import { createSyncCommands, startSyncMenu } from './commands/sync/index.js'
 import { exportCommand } from './commands/export.js'
 import { importCommand } from './commands/import.js'
@@ -21,6 +22,7 @@ import {
   startGeminiMenu,
   startOpenCodeMenu,
   startOpenClawMenu,
+  startGrokMenu,
 } from './interactive.js'
 import {
   getAnyAIToolsDir,
@@ -28,6 +30,7 @@ import {
   getClaudeDir,
   getOpenCodeDir,
   getOpenClawDir,
+  getGrokDir,
   VERSION,
 } from '@anyaitools/core'
 
@@ -44,6 +47,7 @@ if (process.env.NODE_ENV === 'development') {
   console.log(chalk.gray(`  claude: ${getClaudeDir()}`))
   console.log(chalk.gray(`  opencode: ${getOpenCodeDir()}`))
   console.log(chalk.gray(`  openclaw: ${getOpenClawDir()}`))
+  console.log(chalk.gray(`  grok: ${getGrokDir()}`))
   console.log()
 }
 
@@ -69,6 +73,8 @@ program.on('command:*', (operands) => {
     'oc',
     'openclaw',
     'ow',
+    'grok',
+    'gk',
     'mcp',
     'sync',
     'export',
@@ -140,6 +146,15 @@ createOpenClawCommands(openclaw)
 openclaw.action(async () => {
   printLogo()
   await startOpenClawMenu()
+})
+
+// 创建 grok 子命令
+const grok = registerGrokCommands(program)
+
+// grok 不带参数时进入交互模式
+grok.action(async () => {
+  printLogo()
+  await startGrokMenu()
 })
 
 // 创建 mcp 子命令

@@ -454,7 +454,7 @@ aat cx current
 - **使用 anyaitools**：一行命令搞定，零出错，推荐日常使用
 
 ```bash
-npm install -g anyaitools
+npm install -g @vebing-tools/anyaitools
 ```
 
 更多信息请参考：[anyaitools 官方文档](https://github.com/2ue/anyaitools)

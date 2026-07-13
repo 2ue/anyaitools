@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NPM_PACKAGE="@2ue/aicoding"
+NPM_PACKAGE="@vebing-tools/aicoding"
 
 # Reattach to tty so interactive prompts work under curl | bash
 if [ ! -t 0 ] && [ -r /dev/tty ]; then

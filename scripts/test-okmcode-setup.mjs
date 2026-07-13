@@ -346,10 +346,10 @@ test('OpenCode opencode.json 应该在覆盖前备份', () => {
 })
 
 // ============================================================================
-// 测试 3: @2ue/aicoding Codex 快捷覆盖配置
+// 测试 3: @vebing-tools/aicoding Codex 快捷覆盖配置
 // ============================================================================
 
-console.log('\n📋 测试 3: @2ue/aicoding Codex 快捷覆盖配置\n')
+console.log('\n📋 测试 3: @vebing-tools/aicoding Codex 快捷覆盖配置\n')
 
 const aicodingResult = runScript('packages/aicoding/bin/aicoding.js', [
   TEST_API_KEY,

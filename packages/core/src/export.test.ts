@@ -72,4 +72,55 @@ describe('export/import', () => {
     const imported = JSON.parse(fs.readFileSync(path.join(anyaitoolsDir, 'openclaw.json'), 'utf-8'))
     expect(imported.currentProviderId).toBe('x')
   })
+
+  it('should export a standalone Grok provider library', () => {
+    const anyaitoolsDir = getAnyAIToolsDir()
+    fs.mkdirSync(anyaitoolsDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(anyaitoolsDir, 'grok.json'),
+      JSON.stringify({ providers: [], presets: [] }, null, 2),
+      'utf-8'
+    )
+
+    const validation = validateExport()
+    expect(validation.valid).toBe(true)
+    expect(validation.foundFiles).toEqual(['grok.json'])
+
+    const targetDir = path.join(
+      os.tmpdir(),
+      `anyaitools-grok-export-target-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    )
+    const result = exportConfig(targetDir)
+    expect(result.exportedFiles).toEqual(['grok.json'])
+    expect(fs.existsSync(path.join(targetDir, 'grok.json'))).toBe(true)
+  })
+
+  it('should import and back up a standalone Grok provider library', () => {
+    const sourceDir = path.join(
+      os.tmpdir(),
+      `anyaitools-grok-import-source-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    )
+    fs.mkdirSync(sourceDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(sourceDir, 'grok.json'),
+      JSON.stringify({ currentProviderId: 'grok-new', providers: [], presets: [] }, null, 2),
+      'utf-8'
+    )
+
+    const anyaitoolsDir = getAnyAIToolsDir()
+    fs.mkdirSync(anyaitoolsDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(anyaitoolsDir, 'grok.json'),
+      JSON.stringify({ currentProviderId: 'grok-old', providers: [] }, null, 2),
+      'utf-8'
+    )
+
+    expect(validateImportDir(sourceDir).foundFiles).toEqual(['grok.json'])
+    const result = importConfig(sourceDir)
+    expect(result.importedFiles).toEqual(['grok.json'])
+    expect(result.backupPaths).toHaveLength(1)
+    expect(
+      JSON.parse(fs.readFileSync(path.join(anyaitoolsDir, 'grok.json'), 'utf-8')).currentProviderId
+    ).toBe('grok-new')
+  })
 })

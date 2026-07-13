@@ -1,6 +1,7 @@
 {
   "name": "@anyaitools/desktop",
   "version": "0.0.1",
+  "private": true,
   "description": "Desktop app for the Any AI Tools workspace",
   "main": "./dist/main/index.js",
   "scripts": {

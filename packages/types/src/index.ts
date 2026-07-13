@@ -9,9 +9,11 @@
 // 工具类型
 // ---------------------------------------------------------------------------
 
-export type ToolType = 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw'
+export type ToolType = 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
 
-export type MainToolType = 'codex' | 'claude' | 'gemini' | 'openclaw'
+export type MainToolType = 'codex' | 'claude' | 'gemini' | 'openclaw' | 'grok'
+
+export type ApiBackend = 'chat_completions' | 'responses' | 'messages'
 
 // 和 @anyaitools/core 中 constants.ts 的结构保持一致,但不引入任何 Node 依赖
 export const TOOL_TYPES = {
@@ -21,6 +23,7 @@ export const TOOL_TYPES = {
   GEMINI: 'gemini',
   OPENCODE: 'opencode',
   OPENCLAW: 'openclaw',
+  GROK: 'grok',
 } as const
 
 export const MAIN_TOOL_TYPES = {
@@ -28,6 +31,7 @@ export const MAIN_TOOL_TYPES = {
   CLAUDE: TOOL_TYPES.CLAUDE,
   GEMINI: TOOL_TYPES.GEMINI,
   OPENCLAW: TOOL_TYPES.OPENCLAW,
+  GROK: TOOL_TYPES.GROK,
 } as const
 
 export const TOOL_CONFIG = {
@@ -37,7 +41,7 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-blue-600',
     bgColorClass: 'bg-blue-50',
     hoverBgColorClass: 'hover:bg-blue-100',
-    description: 'Codex AI 助手'
+    description: 'Codex AI 助手',
   },
   [TOOL_TYPES.CLAUDE]: {
     displayName: 'Claude Code',
@@ -45,7 +49,7 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-purple-600',
     bgColorClass: 'bg-purple-50',
     hoverBgColorClass: 'hover:bg-purple-100',
-    description: 'Claude Code AI 助手'
+    description: 'Claude Code AI 助手',
   },
   [TOOL_TYPES.MCP]: {
     displayName: 'MCP',
@@ -53,7 +57,7 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-gray-600',
     bgColorClass: 'bg-gray-50',
     hoverBgColorClass: 'hover:bg-gray-100',
-    description: 'MCP 服务'
+    description: 'MCP 服务',
   },
   [TOOL_TYPES.GEMINI]: {
     displayName: 'Gemini CLI',
@@ -61,7 +65,7 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-green-600',
     bgColorClass: 'bg-green-50',
     hoverBgColorClass: 'hover:bg-green-100',
-    description: 'Gemini CLI AI 助手'
+    description: 'Gemini CLI AI 助手',
   },
   [TOOL_TYPES.OPENCODE]: {
     displayName: 'OpenCode',
@@ -69,7 +73,7 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-amber-600',
     bgColorClass: 'bg-amber-50',
     hoverBgColorClass: 'hover:bg-amber-100',
-    description: 'OpenCode 配置'
+    description: 'OpenCode 配置',
   },
   [TOOL_TYPES.OPENCLAW]: {
     displayName: 'OpenClaw',
@@ -77,8 +81,16 @@ export const TOOL_CONFIG = {
     textColorClass: 'text-teal-600',
     bgColorClass: 'bg-teal-50',
     hoverBgColorClass: 'hover:bg-teal-100',
-    description: 'OpenClaw 配置'
-  }
+    description: 'OpenClaw 配置',
+  },
+  [TOOL_TYPES.GROK]: {
+    displayName: 'Grok Build',
+    color: 'red',
+    textColorClass: 'text-red-600',
+    bgColorClass: 'bg-red-50',
+    hoverBgColorClass: 'hover:bg-red-100',
+    description: 'xAI 官方 Grok CLI',
+  },
 } as const
 
 // ---------------------------------------------------------------------------
@@ -97,8 +109,12 @@ export interface Provider {
   baseUrl: string
   /** API Key */
   apiKey: string
-  /** 模型名称(可选,仅 Codex 使用) */
+  /** 模型名称(可选) */
   model?: string
+  /** API 协议后端(可选,用于 Grok CLI 等支持多协议的工具) */
+  apiBackend?: ApiBackend
+  /** 是否支持服务端搜索(可选) */
+  supportsBackendSearch?: boolean
   /** 创建时间(Unix timestamp) */
   createdAt: number
   /** 最后修改时间(Unix timestamp) */
@@ -116,6 +132,12 @@ export interface PresetTemplate {
   description: string
   /** 是否为内置预设 */
   isBuiltIn: boolean
+  /** 默认模型名称(可选) */
+  model?: string
+  /** 默认 API 协议后端(可选) */
+  apiBackend?: ApiBackend
+  /** 是否支持服务端搜索(可选) */
+  supportsBackendSearch?: boolean
 }
 
 export interface AddProviderInput {
@@ -123,7 +145,9 @@ export interface AddProviderInput {
   desc?: string
   baseUrl: string
   apiKey: string
-  model?: string // 可选,仅 Codex 使用
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
 
 export interface EditProviderInput {
@@ -131,19 +155,27 @@ export interface EditProviderInput {
   desc?: string
   baseUrl?: string
   apiKey?: string
-  model?: string // 可选,仅 Codex 使用
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
 
 export interface AddPresetInput {
   name: string
   baseUrl: string
   description: string
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
 
 export interface EditPresetInput {
   name?: string
   baseUrl?: string
   description?: string
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
 
 // ---------------------------------------------------------------------------

@@ -31,12 +31,8 @@ interface ServiceProviderConfigPageProps {
 type PresetToolType = Exclude<ToolType, 'mcp'>
 
 // 扩展预置类型，添加 isBuiltIn 标记
-interface ExtendedPreset {
-  name: string
-  baseUrl: string
-  description: string
+interface ExtendedPreset extends PresetTemplate {
   type: PresetToolType
-  isBuiltIn: boolean
 }
 
 /**
@@ -54,6 +50,8 @@ function getToolAPI(type: PresetToolType) {
       return window.electronAPI.opencode
     case TOOL_TYPES.OPENCLAW:
       return window.electronAPI.openclaw
+    case TOOL_TYPES.GROK:
+      return window.electronAPI.grok
   }
 }
 
@@ -66,18 +64,20 @@ export default function ServiceProviderConfigPage({
   const [geminiPresets, setGeminiPresets] = useState<PresetTemplate[]>([])
   const [opencodePresets, setOpencodePresets] = useState<PresetTemplate[]>([])
   const [openclawPresets, setOpenclawPresets] = useState<PresetTemplate[]>([])
+  const [grokPresets, setGrokPresets] = useState<PresetTemplate[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [codexProviders, setCodexProviders] = useState<Provider[]>([])
   const [claudeProviders, setClaudeProviders] = useState<Provider[]>([])
   const [geminiProviders, setGeminiProviders] = useState<Provider[]>([])
   const [opencodeProviders, setOpencodeProviders] = useState<Provider[]>([])
   const [openclawProviders, setOpenclawProviders] = useState<Provider[]>([])
+  const [grokProviders, setGrokProviders] = useState<Provider[]>([])
 
   // 预置表单 Modal
   const [showPresetModal, setShowPresetModal] = useState(false)
   const [presetModalType, setPresetModalType] = useState<PresetToolType>(TOOL_TYPES.CODEX)
   const [editingPreset, setEditingPreset] = useState<
-    { name: string; baseUrl: string; description: string } | undefined
+    Omit<PresetTemplate, 'isBuiltIn'> | undefined
   >()
 
   // Settings Modal
@@ -122,11 +122,13 @@ export default function ServiceProviderConfigPage({
       const gemini = await window.electronAPI.gemini.listPresets()
       const opencode = await window.electronAPI.opencode.listPresets()
       const openclaw = await window.electronAPI.openclaw.listPresets()
+      const grok = await window.electronAPI.grok.listPresets()
       setCodexPresets(codex)
       setClaudeCodePresets(claude)
       setGeminiPresets(gemini)
       setOpencodePresets(opencode)
       setOpenclawPresets(openclaw)
+      setGrokPresets(grok)
     } catch (error) {
       console.error('加载预置失败:', error)
     }
@@ -160,6 +162,9 @@ export default function ServiceProviderConfigPage({
           break
         case TOOL_TYPES.OPENCLAW:
           setOpenclawProviders(providersData)
+          break
+        case TOOL_TYPES.GROK:
+          setGrokProviders(providersData)
           break
       }
     } catch (error) {
@@ -222,6 +227,9 @@ export default function ServiceProviderConfigPage({
       name: preset.name,
       baseUrl: preset.baseUrl,
       description: preset.description,
+      model: preset.model,
+      apiBackend: preset.apiBackend,
+      supportsBackendSearch: preset.supportsBackendSearch,
     })
     setShowPresetModal(true)
   }
@@ -299,6 +307,11 @@ export default function ServiceProviderConfigPage({
     type: TOOL_TYPES.OPENCLAW,
   }))
 
+  const extendedGrokPresets: ExtendedPreset[] = grokPresets.map((p) => ({
+    ...p,
+    type: TOOL_TYPES.GROK,
+  }))
+
   // 前端搜索过滤
   const filteredCodexPresets = extendedCodexPresets.filter(
     (p) =>
@@ -335,6 +348,14 @@ export default function ServiceProviderConfigPage({
       p.baseUrl.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const filteredGrokPresets = extendedGrokPresets.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.baseUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.model?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -351,7 +372,8 @@ export default function ServiceProviderConfigPage({
                 claudeCodePresets.length +
                 geminiPresets.length +
                 opencodePresets.length +
-                openclawPresets.length}{' '}
+                openclawPresets.length +
+                grokPresets.length}{' '}
               个预置）
             </p>
           </div>
@@ -836,6 +858,113 @@ export default function ServiceProviderConfigPage({
             </div>
           )}
         </div>
+
+        {/* Grok Build 预置组 */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                Grok Build 预置
+              </h2>
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                {filteredGrokPresets.length}
+              </span>
+            </div>
+            <button
+              onClick={() => handleAddPreset(TOOL_TYPES.GROK)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              添加 Grok Build 预置
+            </button>
+          </div>
+
+          {filteredGrokPresets.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              {searchQuery ? '没有匹配的 Grok Build 预置' : '暂无 Grok Build 预置'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredGrokPresets.map((preset) => (
+                <div
+                  key={`grok-${preset.name}`}
+                  className="bg-white rounded-xl p-3 border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-gray-900 truncate mb-1">
+                        {preset.name}
+                      </h3>
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${
+                          preset.isBuiltIn
+                            ? 'bg-gray-100 text-gray-600 border-gray-200'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        {preset.isBuiltIn ? '内置' : '自定义'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-600 mb-2">{preset.description}</p>
+                  <p
+                    className="text-xs text-gray-600 font-mono mb-1 truncate"
+                    title={preset.baseUrl}
+                  >
+                    {preset.baseUrl ? preset.baseUrl : 'Grok Build 内置模型'}
+                  </p>
+                  <div className="mb-3 flex min-w-0 items-center gap-1.5 text-xs text-gray-400">
+                    <span className="truncate font-mono" title={preset.model}>
+                      {preset.model}
+                    </span>
+                    {preset.baseUrl && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="truncate">{preset.apiBackend || 'chat_completions'}</span>
+                        {preset.supportsBackendSearch && (
+                          <span className="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5">
+                            Search
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      onClick={() => handleUsePreset(preset)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      title="使用此预置"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      使用
+                    </button>
+                    {!preset.isBuiltIn && (
+                      <>
+                        <button
+                          onClick={() => handleEditPreset(preset)}
+                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="编辑预置"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePreset(preset)}
+                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="删除预置"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Preset Form Modal */}
@@ -884,7 +1013,7 @@ export default function ServiceProviderConfigPage({
       {/* Use Preset Modal */}
       {showUsePresetModal && usingPreset && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold tracking-tight text-gray-900 mb-4">
               使用预置服务商
             </h2>
@@ -903,6 +1032,8 @@ export default function ServiceProviderConfigPage({
                     return opencodeProviders
                   case TOOL_TYPES.OPENCLAW:
                     return openclawProviders
+                  case TOOL_TYPES.GROK:
+                    return grokProviders
                 }
               })()}
               onSubmit={handleUsePresetSubmit}

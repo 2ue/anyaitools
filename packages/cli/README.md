@@ -1,16 +1,16 @@
-# anyaitools
+# @vebing-tools/anyaitools
 
-> 面向 Any AI Tools 工作流的 CLI，统一管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw 和 MCP 的配置与同步。
+> 面向 Any AI Tools 工作流的 CLI，统一管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw、xAI Grok Build 和 MCP 的配置与同步。
 
 ---
 
 ## ✨ 核心特性
 
 - 🔄 **一键切换**：一条命令切换服务商，自动修改配置文件
-- 📦 **内置预设**：提供常用预设（Claude: 1 个，Gemini: 2 个，Codex: 2 个，OpenCode: 1 个，MCP: 多个），只需填写 API Key
+- 📦 **内置预设**：提供常用预设，包括 xAI 官方 Grok Build 模板
 - 🛠️ **自定义配置**：支持添加任意第三方服务商
 - 🔐 **安全写入**：常规管理命令默认增量更新；`aat okm` 等快捷配置命令对所涉及工具执行覆盖式写入
-- 🎯 **多工具支持**：同时管理 Codex、Claude Code、Gemini CLI、OpenCode 和 MCP 服务器
+- 🎯 **多工具支持**：同时管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw、Grok Build 和 MCP 服务器
 - 📱 **双界面**：提供 CLI（命令行）和 Desktop（图形界面）
 - 🔁 **克隆功能**：快速复制配置，管理多个 API Key
 - ☁️ **WebDAV 同步**（可选）：同步配置到你自己的 WebDAV 服务器（iCloud/Dropbox）
@@ -27,6 +27,7 @@ anyaitools 的核心功能是自动化配置文件的切换：
 - **Claude Code**：自动修改 `~/.claude/settings.json`
 - **Gemini CLI**：自动修改 `~/.gemini/settings.json` 和 `~/.gemini/.env`
 - **OpenCode**：自动修改 `~/.config/opencode/opencode.json`
+- **Grok Build**：安全合并 `$GROK_HOME/config.toml`（默认 `~/.grok/config.toml`）
 - **MCP**：管理 MCP 服务器配置，并同步到 Claude Code 和 Gemini CLI
 - **备份机制**：写入前自动备份，失败时自动回滚
 
@@ -39,10 +40,10 @@ anyaitools 的核心功能是自动化配置文件的切换：
 ## 安装
 
 ```bash
-npm install -g anyaitools
+npm install -g @vebing-tools/anyaitools
 ```
 
-**要求**：Node.js >= 18.0.0
+**要求**：anyaitools 需要 Node.js >= 18.0.0；使用 xAI 官方 Grok Build CLI 需要 Node.js >= 20.0.0。
 
 **Desktop 版本**：如果你更喜欢图形界面，可以从 [GitHub Releases](https://github.com/2ue/anyaitools/releases) 下载 Desktop 应用（macOS/Windows/Linux）。
 
@@ -68,6 +69,8 @@ Commands:
   cc              管理 Claude 服务商
   gm              管理 Gemini CLI 服务商
   oc              管理 OpenCode 服务商
+  openclaw|ow     管理 OpenClaw 服务商
+  grok|gk         管理 xAI Grok Build 服务商
   mcp             管理 MCP 服务器
   sync            WebDAV 同步配置
   export [dir]    导出配置
@@ -158,6 +161,56 @@ aat oc use       # 切换服务商
 aat oc list      # 查看所有服务商
 ```
 
+### 管理 xAI Grok Build 服务商
+
+AnyAI Tools 接入的是 xAI 官方 npm 包 `@xai-official/grok`，不是社区历史包
+`@vibe-kit/grok-cli`。先安装官方 CLI：
+
+```bash
+npm install -g @xai-official/grok
+grok version
+```
+
+管理服务商：
+
+```bash
+aat grok             # 进入交互式菜单；gk 是等价别名
+aat gk add           # 添加官方预设或自定义兼容服务商
+aat gk list          # 查看模型、API backend 和 backend search
+aat gk use           # 写入当前服务商
+aat gk current       # 查看 AnyAI Tools 当前选择
+aat gk edit          # 编辑或清除内联 API Key
+aat gk clone         # 克隆服务商
+aat gk remove        # 删除服务商
+```
+
+非交互示例：
+
+```bash
+# 官方预设：只选择内置 grok-build，保留官方登录和内置路由。
+aat gk add --preset "xAI Grok Build" --switch
+
+# 自定义 OpenAI Chat Completions 兼容服务；URL 不会被补写或替换。
+aat gk add \
+  --name gateway \
+  --base-url https://gateway.example.com/custom \
+  --api-key sk-example \
+  --model model-id \
+  --api-backend chat_completions \
+  --no-supports-backend-search \
+  --switch
+```
+
+Grok Build 的用户配置位于 `$GROK_HOME/config.toml`，未设置 `GROK_HOME` 时为
+`~/.grok/config.toml`。企业 requirements 或环境变量可能覆盖用户配置，所以切换后使用：
+
+```bash
+grok inspect
+```
+
+检查最终生效配置。完整说明见
+[Grok Build 接入指南](https://github.com/2ue/anyaitools/blob/main/docs/grok-build.md)。
+
 ### 管理 MCP 服务器
 
 ```bash
@@ -210,6 +263,15 @@ aat mcp remove   # 删除 MCP 服务器
 | `aat oc edit [name]`    | 编辑 OpenCode 服务商                                      |
 | `aat oc remove [name]`  | 删除 OpenCode 服务商                                      |
 | `aat oc clone [source]` | 克隆 OpenCode 服务商                                      |
+| **Grok Build 管理**     |                                                           |
+| `aat grok` / `aat gk`   | Grok Build 交互式菜单                                     |
+| `aat gk add`            | 添加 Grok Build 服务商                                    |
+| `aat gk list`           | 列出 Grok Build 服务商                                    |
+| `aat gk use [name]`     | 切换 Grok Build 服务商                                    |
+| `aat gk current`        | 查看当前 Grok Build 服务商                                |
+| `aat gk edit [name]`    | 编辑 Grok Build 服务商                                    |
+| `aat gk remove [name]`  | 删除 Grok Build 服务商                                    |
+| `aat gk clone [source]` | 克隆 Grok Build 服务商                                    |
 | **MCP 服务器管理**      |                                                           |
 | `aat mcp add`           | 添加 MCP 服务器                                           |
 | `aat mcp list`          | 列出所有 MCP 服务器                                       |
@@ -227,6 +289,7 @@ aat cx add --name work --base-url https://api.example.com --api-key sk-xxx --swi
 aat cc add --preset OKMCode --api-key sk-xxx --switch
 aat gm edit default --new-name personal --base-url '' --api-key ''
 aat oc remove old-provider --yes
+aat gk edit gateway --model new-model --api-backend responses --supports-backend-search
 ```
 
 WebDAV 同步支持参数模式和环境变量模式，适合在其他机器非交互执行：
@@ -290,6 +353,15 @@ aat sync upload --yes
 | -------- | --------------------- |
 | OKMCode  | `https://okmcode.com` |
 | OKMCode  | `https://okmcode.com` |
+
+### Grok Build 预设（1 个）
+
+| 预设名称       | 模式     | Model        | 认证                      |
+| -------------- | -------- | ------------ | ------------------------- |
+| xAI Grok Build | 官方内置 | `grok-build` | Grok 登录或 `XAI_API_KEY` |
+
+该预设只写 `models.default = "grok-build"`，不重定义官方内置模型。自定义 Base URL、
+模型、协议和搜索能力会按用户输入写入，不按域名推断。
 
 ### MCP 预设（多个）
 
@@ -381,6 +453,7 @@ $ aat cc use "Claude Test"
 - `~/.anyaitools/claude.json` - Claude Code 服务商配置
 - `~/.anyaitools/gemini.json` - Gemini CLI 服务商配置
 - `~/.anyaitools/opencode.json` - OpenCode 服务商配置
+- `~/.anyaitools/grok.json` - Grok Build 服务商配置
 - `~/.anyaitools/mcp.json` - MCP 服务器配置
 
 **工具配置**（anyaitools 会自动修改）：
@@ -389,13 +462,15 @@ $ aat cc use "Claude Test"
 - **Claude Code**: `~/.claude/settings.json`
 - **Gemini CLI**: `~/.gemini/settings.json` 和 `~/.gemini/.env`
 - **OpenCode**: `~/.config/opencode/opencode.json`
+- **Grok Build**: `$GROK_HOME/config.toml`（默认 `~/.grok/config.toml`）
 
 **安全写入承诺**：
 
 - 快捷覆盖和其他高风险入口写入前备份；常规 provider 管理不生成 `.bak`
-- 常规管理命令（如 `aat cx` / `aat cc` / `aat gm` / `aat oc` / `aat openclaw`）默认采用增量更新
+- 常规管理命令（如 `aat cx` / `aat cc` / `aat gm` / `aat oc` / `aat openclaw` / `aat grok`）默认采用增量更新
 - 快捷配置命令（如 `aat okm`）会对所涉及工具执行覆盖式写入
 - API Key 存储在本地，权限 `0600`
+- Grok 内置模式不创建受管模型节点或写入 `api_key`；自定义端点的 Key 留空时也不会生成内联密钥
 
 ---
 

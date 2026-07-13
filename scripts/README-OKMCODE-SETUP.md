@@ -10,7 +10,7 @@
 - `aat okm`
 - `scripts/setup-okmcode.mjs`
 - `scripts/setup-okmcode-standalone.mjs`
-- `@2ue/aicoding`
+- `@vebing-tools/aicoding`
 
 都属于“快捷配置入口”，目标是快速落下一套已知可用的配置，因此采用覆盖写入语义。
 

@@ -229,12 +229,51 @@ const openclawAPI: OpenClawAPI = {
 }
 
 // ============================================================================
+// Grok Build API
+// ============================================================================
+
+export interface GrokAPI {
+  addProvider: (input: AddProviderInput) => Promise<Provider>
+  listProviders: () => Promise<Provider[]>
+  getProvider: (id: string) => Promise<Provider | undefined>
+  switchProvider: (id: string) => Promise<void>
+  editProvider: (id: string, updates: EditProviderInput) => Promise<Provider>
+  removeProvider: (id: string) => Promise<void>
+  cloneProvider: (sourceId: string, newName: string) => Promise<Provider>
+  getCurrent: () => Promise<Provider | undefined>
+  findByName: (name: string) => Promise<Provider | undefined>
+
+  addPreset: (input: AddPresetInput) => Promise<PresetTemplate>
+  listPresets: () => Promise<PresetTemplate[]>
+  editPreset: (name: string, updates: EditPresetInput) => Promise<PresetTemplate>
+  removePreset: (name: string) => Promise<void>
+}
+
+const grokAPI: GrokAPI = {
+  addProvider: (input) => ipcRenderer.invoke('grok:add-provider', input),
+  listProviders: () => ipcRenderer.invoke('grok:list-providers'),
+  getProvider: (id) => ipcRenderer.invoke('grok:get-provider', id),
+  switchProvider: (id) => ipcRenderer.invoke('grok:switch-provider', id),
+  editProvider: (id, updates) => ipcRenderer.invoke('grok:edit-provider', id, updates),
+  removeProvider: (id) => ipcRenderer.invoke('grok:remove-provider', id),
+  cloneProvider: (sourceId, newName) =>
+    ipcRenderer.invoke('grok:clone-provider', sourceId, newName),
+  getCurrent: () => ipcRenderer.invoke('grok:get-current'),
+  findByName: (name) => ipcRenderer.invoke('grok:find-by-name', name),
+
+  addPreset: (input) => ipcRenderer.invoke('grok:add-preset', input),
+  listPresets: () => ipcRenderer.invoke('grok:list-presets'),
+  editPreset: (name, updates) => ipcRenderer.invoke('grok:edit-preset', name, updates),
+  removePreset: (name) => ipcRenderer.invoke('grok:remove-preset', name),
+}
+
+// ============================================================================
 // 配置文件 API
 // ============================================================================
 
 export interface ConfigAPI {
   readConfigFiles: (
-    tool: 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw'
+    tool: 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
   ) => Promise<
     Array<{ name: string; path: string; content: string; language: 'json' | 'toml' | 'env' }>
   >
@@ -425,6 +464,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gemini: geminiAPI,
   opencode: opencodeAPI,
   openclaw: openclawAPI,
+  grok: grokAPI,
   config: configAPI,
   system: systemAPI,
   update: updateAPI,
@@ -444,6 +484,7 @@ export interface ElectronAPI {
   gemini: GeminiAPI
   opencode: OpenCodeAPI
   openclaw: OpenClawAPI
+  grok: GrokAPI
   config: ConfigAPI
   system: SystemAPI
   update: UpdateAPI

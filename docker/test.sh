@@ -37,7 +37,7 @@ section "1. 单元测试"
 # ============================================================
 
 run_test "Core 单元测试" pnpm --filter @anyaitools/core test
-run_test "CLI 单元测试" pnpm --filter anyaitools test
+run_test "CLI 单元测试" pnpm --filter @vebing-tools/anyaitools test
 
 # ============================================================
 section "2. CLI 功能测试"

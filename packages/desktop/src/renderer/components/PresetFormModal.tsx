@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { TOOL_TYPES, TOOL_CONFIG, type ToolType } from '@anyaitools/types'
+import { TOOL_TYPES, TOOL_CONFIG, type ToolType, type ApiBackend } from '@anyaitools/types'
 import { AlertDialog } from './dialogs'
 
 interface PresetData {
   name: string
   baseUrl: string
   description: string
+  model?: string
+  apiBackend?: ApiBackend
+  supportsBackendSearch?: boolean
 }
+
+const API_BACKEND_OPTIONS: Array<{ value: ApiBackend; label: string }> = [
+  { value: 'chat_completions', label: 'Chat Completions' },
+  { value: 'responses', label: 'Responses' },
+  { value: 'messages', label: 'Messages' },
+]
 
 interface Props {
   show: boolean
@@ -29,6 +38,10 @@ export default function PresetFormModal({
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [description, setDescription] = useState('')
+  const [model, setModel] = useState('')
+  const [apiBackend, setApiBackend] = useState<ApiBackend>('chat_completions')
+  const [supportsBackendSearch, setSupportsBackendSearch] = useState(false)
+  const [useBuiltinModel, setUseBuiltinModel] = useState(false)
 
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean
@@ -47,12 +60,20 @@ export default function PresetFormModal({
       setName(preset.name)
       setBaseUrl(preset.baseUrl)
       setDescription(preset.description)
+      setModel(preset.model || '')
+      setApiBackend(preset.apiBackend || 'chat_completions')
+      setSupportsBackendSearch(preset.supportsBackendSearch ?? false)
+      setUseBuiltinModel(type === TOOL_TYPES.GROK && !preset.baseUrl.trim())
     } else {
       setName('')
       setBaseUrl('')
       setDescription('')
+      setModel('')
+      setApiBackend('chat_completions')
+      setSupportsBackendSearch(false)
+      setUseBuiltinModel(false)
     }
-  }, [preset, show])
+  }, [preset, show, type])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,16 +91,30 @@ export default function PresetFormModal({
             return window.electronAPI.opencode
           case TOOL_TYPES.OPENCLAW:
             return window.electronAPI.openclaw
+          case TOOL_TYPES.GROK:
+            return window.electronAPI.grok
         }
       })()
 
+      const input = {
+        name: name.trim(),
+        baseUrl: baseUrl.trim(),
+        description: description.trim(),
+        ...(type === TOOL_TYPES.GROK
+          ? {
+              model: model.trim(),
+              ...(useBuiltinModel ? {} : { apiBackend, supportsBackendSearch }),
+            }
+          : {}),
+      }
+
       if (preset) {
         // 编辑模式
-        await api.editPreset(preset.name, { name, baseUrl, description })
+        await api.editPreset(preset.name, input)
         onSuccess?.('更新成功')
       } else {
         // 添加模式
-        await api.addPreset({ name, baseUrl, description })
+        await api.addPreset(input)
         onSuccess?.('添加成功')
       }
 
@@ -99,7 +134,7 @@ export default function PresetFormModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             {preset ? '编辑预置服务商' : '添加预置服务商'} - {TOOL_CONFIG[type].displayName}
@@ -122,17 +157,127 @@ export default function PresetFormModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">API 地址</label>
-            <input
-              type="url"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="https://api.example.com/v1"
-              required
-            />
-          </div>
+          {type === TOOL_TYPES.GROK && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">模型来源</label>
+                <div
+                  className="grid grid-cols-2 rounded-lg border border-gray-200 bg-gray-50 p-1"
+                  role="radiogroup"
+                  aria-label="模型来源"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={useBuiltinModel}
+                    onClick={() => {
+                      setUseBuiltinModel(true)
+                      setBaseUrl('')
+                      if (!model.trim()) setModel('grok-build')
+                    }}
+                    className={`min-h-9 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      useBuiltinModel
+                        ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200'
+                        : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                    }`}
+                  >
+                    内置模型
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!useBuiltinModel}
+                    onClick={() => setUseBuiltinModel(false)}
+                    className={`min-h-9 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      !useBuiltinModel
+                        ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200'
+                        : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                    }`}
+                  >
+                    自定义端点
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">模型 ID</label>
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="grok-build"
+                  required
+                />
+              </div>
+
+              {!useBuiltinModel && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      API Backend
+                    </label>
+                    <div
+                      className="grid grid-cols-3 rounded-lg border border-gray-200 bg-gray-50 p-1"
+                      role="radiogroup"
+                      aria-label="API Backend"
+                    >
+                      {API_BACKEND_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={apiBackend === option.value}
+                          onClick={() => setApiBackend(option.value)}
+                          className={`min-h-8 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                            apiBackend === option.value
+                              ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200'
+                              : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+                    <span className="text-sm font-medium text-gray-700">Backend Search</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={supportsBackendSearch}
+                      aria-label="Backend Search"
+                      onClick={() => setSupportsBackendSearch((value) => !value)}
+                      className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors ${
+                        supportsBackendSearch ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                          supportsBackendSearch ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {!(type === TOOL_TYPES.GROK && useBuiltinModel) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API 地址</label>
+              <input
+                type="url"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="https://api.example.com/v1"
+                required
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>

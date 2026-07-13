@@ -20,6 +20,7 @@ import {
   createGeminiManager,
   createOpenCodeManager,
   createOpenClawManager,
+  createGrokManager,
   migrateConfig,
   getClaudeConfigPath,
   getCodexConfigPath,
@@ -28,12 +29,14 @@ import {
   getOpenCodeConfigPath,
   getOpenClawConfigPath,
   getOpenClawModelsPath,
+  getGrokConfigPath,
   getAnyAIToolsDir,
   getCodexDir,
   getClaudeDir,
   getGeminiDir,
   getOpenCodeDir,
   getOpenClawDir,
+  getGrokDir,
   getGeminiEnvPath,
   testWebDAVConnection,
   uploadToCloud,
@@ -107,6 +110,7 @@ if (isDev) {
   console.log(`  gemini: ${getGeminiDir()}`)
   console.log(`  opencode: ${getOpenCodeDir()}`)
   console.log(`  openclaw: ${getOpenClawDir()}`)
+  console.log(`  grok: ${getGrokDir()}`)
   console.log()
 } else {
   console.log('\n[生产模式] 启动信息:')
@@ -116,6 +120,7 @@ if (isDev) {
   console.log(`  gemini: ${getGeminiDir()}`)
   console.log(`  opencode: ${getOpenCodeDir()}`)
   console.log(`  openclaw: ${getOpenClawDir()}`)
+  console.log(`  grok: ${getGrokDir()}`)
   console.log(`  app.isPackaged: ${app.isPackaged}`)
   console.log()
 }
@@ -145,16 +150,39 @@ function createBackupOrThrow(filePath: string, operation: string): string | null
   }
 }
 
+function writePrivateFileAtomically(filePath: string, content: string): void {
+  const tempPath = `${filePath}.tmp`
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+
+  try {
+    fs.writeFileSync(tempPath, content, { encoding: 'utf-8', mode: 0o600 })
+    fs.chmodSync(tempPath, 0o600)
+    fs.renameSync(tempPath, filePath)
+    fs.chmodSync(filePath, 0o600)
+  } catch (error) {
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath)
+      } catch {
+        // Keep the original write error.
+      }
+    }
+    throw error
+  }
+}
+
 function writeFilesWithBackup(
   files: EditableConfigFile[],
   operation: string,
   withBackup: boolean = true
 ): { success: boolean } {
   const snapshots: Array<{ path: string; content: string }> = []
+  const existingPaths = new Set<string>()
 
   // 所有写入场景都保留内存快照用于失败回滚
   for (const file of files) {
     if (fs.existsSync(file.path)) {
+      existingPaths.add(file.path)
       snapshots.push({
         path: file.path,
         content: fs.readFileSync(file.path, 'utf-8'),
@@ -168,17 +196,32 @@ function writeFilesWithBackup(
 
   try {
     for (const file of files) {
-      fs.mkdirSync(path.dirname(file.path), { recursive: true })
-      const tempPath = `${file.path}.tmp`
-      fs.writeFileSync(tempPath, file.content, 'utf-8')
-      fs.renameSync(tempPath, file.path)
+      writePrivateFileAtomically(file.path, file.content)
     }
     return { success: true }
   } catch (error) {
-    for (const snapshot of snapshots) {
-      fs.writeFileSync(snapshot.path, snapshot.content, 'utf-8')
+    let rollbackError: Error | undefined
+
+    for (const file of files) {
+      if (!existingPaths.has(file.path) && fs.existsSync(file.path)) {
+        try {
+          fs.unlinkSync(file.path)
+        } catch (cleanupError) {
+          rollbackError ??= cleanupError as Error
+        }
+      }
     }
-    throw new Error(`写入失败，已回滚原文件: ${(error as Error).message}`)
+
+    for (const snapshot of snapshots) {
+      try {
+        writePrivateFileAtomically(snapshot.path, snapshot.content)
+      } catch (restoreError) {
+        rollbackError ??= restoreError as Error
+      }
+    }
+
+    const rollbackMessage = rollbackError ? `；回滚异常: ${rollbackError.message}` : ''
+    throw new Error(`写入失败，已回滚原文件: ${(error as Error).message}${rollbackMessage}`)
   }
 }
 
@@ -506,6 +549,55 @@ ipcMain.handle('openclaw:find-by-name', async (_event, name: string) => {
 })
 
 // ============================================================================
+// IPC 处理器 - Grok Build
+// ============================================================================
+
+ipcMain.handle('grok:add-provider', async (_event, input: AddProviderInput) => {
+  const manager = createGrokManager()
+  return manager.add(input)
+})
+
+ipcMain.handle('grok:list-providers', async () => {
+  const manager = createGrokManager()
+  return manager.list()
+})
+
+ipcMain.handle('grok:get-provider', async (_event, id: string) => {
+  const manager = createGrokManager()
+  return manager.get(id)
+})
+
+ipcMain.handle('grok:switch-provider', async (_event, id: string) => {
+  const manager = createGrokManager()
+  return manager.switch(id)
+})
+
+ipcMain.handle('grok:edit-provider', async (_event, id: string, updates: EditProviderInput) => {
+  const manager = createGrokManager()
+  return manager.edit(id, updates)
+})
+
+ipcMain.handle('grok:remove-provider', async (_event, id: string) => {
+  const manager = createGrokManager()
+  return manager.remove(id)
+})
+
+ipcMain.handle('grok:clone-provider', async (_event, sourceId: string, newName: string) => {
+  const manager = createGrokManager()
+  return manager.clone(sourceId, newName)
+})
+
+ipcMain.handle('grok:get-current', async () => {
+  const manager = createGrokManager()
+  return manager.getCurrent()
+})
+
+ipcMain.handle('grok:find-by-name', async (_event, name: string) => {
+  const manager = createGrokManager()
+  return manager.findByName(name)
+})
+
+// ============================================================================
 // IPC 处理器 - OpenCode Presets
 // ============================================================================
 
@@ -558,6 +650,30 @@ ipcMain.handle('openclaw:edit-preset', async (_event, name: string, updates: Edi
 // 删除 OpenClaw preset
 ipcMain.handle('openclaw:remove-preset', async (_event, name: string) => {
   const manager = createOpenClawManager()
+  return manager.removePreset(name)
+})
+
+// ============================================================================
+// IPC 处理器 - Grok Build Presets
+// ============================================================================
+
+ipcMain.handle('grok:list-presets', async () => {
+  const manager = createGrokManager()
+  return manager.listPresets()
+})
+
+ipcMain.handle('grok:add-preset', async (_event, input: AddPresetInput) => {
+  const manager = createGrokManager()
+  return manager.addPreset(input)
+})
+
+ipcMain.handle('grok:edit-preset', async (_event, name: string, updates: EditPresetInput) => {
+  const manager = createGrokManager()
+  return manager.editPreset(name, updates)
+})
+
+ipcMain.handle('grok:remove-preset', async (_event, name: string) => {
+  const manager = createGrokManager()
   return manager.removePreset(name)
 })
 
@@ -710,7 +826,10 @@ ipcMain.handle('claude:remove-preset', async (_event, name: string) => {
 // 读取配置文件
 ipcMain.handle(
   'read-config-files',
-  async (_event, tool: 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw') => {
+  async (
+    _event,
+    tool: 'codex' | 'claude' | 'mcp' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
+  ) => {
     try {
       if (tool === 'claude') {
         const path = getClaudeConfigPath()
@@ -921,6 +1040,28 @@ ipcMain.handle(
         }
 
         return result
+      } else if (tool === 'grok') {
+        const grokPath = getGrokConfigPath()
+
+        if (!fs.existsSync(grokPath)) {
+          return [
+            {
+              name: 'config.toml',
+              path: grokPath,
+              content: '# 配置文件不存在\n# 请先添加并切换 Grok Build 服务商，配置文件将自动创建\n',
+              language: 'toml' as const,
+            },
+          ]
+        }
+
+        return [
+          {
+            name: 'config.toml',
+            path: grokPath,
+            content: fs.readFileSync(grokPath, 'utf-8'),
+            language: 'toml' as const,
+          },
+        ]
       }
       return []
     } catch (error) {
@@ -946,6 +1087,7 @@ ipcMain.handle('read-anyaitools-config-files', async () => {
     const geminiPath = path.join(getAnyAIToolsDir(), 'gemini.json')
     const opencodePath = path.join(getAnyAIToolsDir(), 'opencode.json')
     const openclawPath = path.join(getAnyAIToolsDir(), 'openclaw.json')
+    const grokPath = path.join(getAnyAIToolsDir(), 'grok.json')
 
     const files: Array<{ name: string; path: string; content: string; language: 'json' }> = []
 
@@ -995,6 +1137,16 @@ ipcMain.handle('read-anyaitools-config-files', async () => {
       path: openclawPath,
       content: fs.existsSync(openclawPath)
         ? fs.readFileSync(openclawPath, 'utf-8')
+        : '{\n  "providers": [],\n  "presets": []\n}\n',
+      language: 'json',
+    })
+
+    // Grok Build
+    files.push({
+      name: 'grok.json',
+      path: grokPath,
+      content: fs.existsSync(grokPath)
+        ? fs.readFileSync(grokPath, 'utf-8')
         : '{\n  "providers": [],\n  "presets": []\n}\n',
       language: 'json',
     })

@@ -15,12 +15,13 @@ import { uploadToWebDAV, downloadFromWebDAV, existsOnWebDAV } from './webdav-cli
 import { encryptProviders, decryptProviders } from './crypto.js'
 import { mergeProviders, mergePresets } from './merge-advanced.js'
 import { backupConfig } from './merge.js'
-import { getAnyAIToolsDir } from '../paths.js'
-import { readJSON, writeJSON, fileExists } from '../utils/file.js'
+import { getAnyAIToolsDir, getGrokConfigPath } from '../paths.js'
+import { createAtomicTempPath, ensureDir, readJSON, writeJSON, fileExists } from '../utils/file.js'
 import { writeCodexConfig } from '../writers/codex.js'
 import { writeClaudeConfig } from '../writers/claude.js'
 import { writeGeminiConfig } from '../writers/gemini.js'
 import { writeOpenClawConfig } from '../writers/openclaw.js'
+import { writeGrokConfig } from '../writers/grok.js'
 import { MAIN_TOOL_TYPES, type MainToolType } from '../constants.js'
 
 /**
@@ -64,6 +65,11 @@ const TOOL_SYNC_CONFIG: Record<MainToolType, ToolSyncConfig> = {
     configFilename: 'openclaw.json',
     writerFunc: writeOpenClawConfig,
   },
+  [MAIN_TOOL_TYPES.GROK]: {
+    remotePath: '.anyaitools/grok.json',
+    configFilename: 'grok.json',
+    writerFunc: writeGrokConfig,
+  },
 } as const
 
 /**
@@ -88,6 +94,83 @@ function readLocalConfigOrEmpty(configPath: string): ToolConfig {
     return createEmptyToolConfig()
   }
   return readJSON<ToolConfig>(configPath)
+}
+
+interface FileSnapshot {
+  filePath: string
+  existed: boolean
+  content?: Buffer
+  mode?: number
+}
+
+function captureFileSnapshot(filePath: string): FileSnapshot {
+  if (!fileExists(filePath)) return { filePath, existed: false }
+  const stat = fs.statSync(filePath)
+  return {
+    filePath,
+    existed: true,
+    content: fs.readFileSync(filePath),
+    mode: stat.mode & 0o777,
+  }
+}
+
+function restoreFileSnapshot(snapshot: FileSnapshot): void {
+  if (!snapshot.existed) {
+    fs.rmSync(snapshot.filePath, { force: true })
+    return
+  }
+
+  ensureDir(path.dirname(snapshot.filePath))
+  const tempPath = createAtomicTempPath(snapshot.filePath)
+  try {
+    fs.writeFileSync(tempPath, snapshot.content!, { mode: 0o600 })
+    fs.renameSync(tempPath, snapshot.filePath)
+    fs.chmodSync(snapshot.filePath, snapshot.mode ?? 0o600)
+  } catch (error) {
+    fs.rmSync(tempPath, { force: true })
+    throw error
+  }
+}
+
+function hasApplicableCurrentProvider(config: ToolConfig): boolean {
+  return Boolean(
+    config.currentProviderId &&
+    config.providers.some((provider) => provider.id === config.currentProviderId)
+  )
+}
+
+function rollbackLocalChanges(
+  backupPaths: string[],
+  createdConfigPaths: Set<string>,
+  grokSnapshot: FileSnapshot | undefined,
+  restoreGrok: boolean
+): boolean {
+  let success = true
+
+  for (const backupPath of backupPaths) {
+    const originalPath = backupPath.replace(/\.backup\.\d+$/, '')
+    try {
+      if (fs.existsSync(backupPath)) fs.copyFileSync(backupPath, originalPath)
+    } catch {
+      success = false
+    }
+  }
+  for (const configPath of createdConfigPaths) {
+    try {
+      fs.rmSync(configPath, { force: true })
+    } catch {
+      success = false
+    }
+  }
+  if (restoreGrok && grokSnapshot) {
+    try {
+      restoreFileSnapshot(grokSnapshot)
+    } catch {
+      success = false
+    }
+  }
+
+  return success
 }
 
 /**
@@ -194,6 +277,7 @@ export async function downloadFromCloud(config: SyncConfig, password: string): P
 
   // 备份本地配置
   const backupPaths: string[] = []
+  let grokSnapshot: FileSnapshot | undefined
 
   try {
     for (const tool of toolKeys) {
@@ -204,11 +288,22 @@ export async function downloadFromCloud(config: SyncConfig, password: string): P
         backupPaths.push(backupConfig(configPath))
       }
     }
+
+    const remoteGrok = remoteConfigs.find(
+      ({ tool, config: remoteConfig, decryptedProviders }) =>
+        tool === MAIN_TOOL_TYPES.GROK &&
+        remoteConfig &&
+        decryptedProviders &&
+        hasApplicableCurrentProvider({ ...remoteConfig, providers: decryptedProviders })
+    )
+    if (remoteGrok) grokSnapshot = captureFileSnapshot(getGrokConfigPath())
   } catch (error) {
     throw new Error(`备份失败: ${(error as Error).message}`)
   }
 
   // 直接覆盖本地配置（覆盖策略：云端配置是什么就同步什么）
+  const createdConfigPaths = new Set<string>()
+  let grokWriteAttempted = false
   try {
     for (const { tool, config: remoteConfig, decryptedProviders } of remoteConfigs) {
       if (!remoteConfig || !decryptedProviders) continue
@@ -221,9 +316,13 @@ export async function downloadFromCloud(config: SyncConfig, password: string): P
         providers: decryptedProviders, // 只替换 providers（解密后的）
       }
 
+      if (!fileExists(configPath)) createdConfigPaths.add(configPath)
       writeJSON(configPath, newConfig)
 
       // 自动应用当前 provider 到官方工具配置
+      if (tool === MAIN_TOOL_TYPES.GROK && hasApplicableCurrentProvider(newConfig)) {
+        grokWriteAttempted = true
+      }
       applyCurrentProvider(tool, newConfig)
     }
 
@@ -233,14 +332,14 @@ export async function downloadFromCloud(config: SyncConfig, password: string): P
     console.log('✅ 配置已从云端下载并应用')
     return backupPaths
   } catch (error) {
-    // 恢复备份
-    for (const backupPath of backupPaths) {
-      const originalPath = backupPath.replace(/\.backup\.\d+$/, '')
-      if (fs.existsSync(backupPath)) {
-        fs.copyFileSync(backupPath, originalPath)
-      }
-    }
-    throw new Error(`覆盖配置失败，已恢复备份: ${(error as Error).message}`)
+    const restored = rollbackLocalChanges(
+      backupPaths,
+      createdConfigPaths,
+      grokSnapshot,
+      grokWriteAttempted
+    )
+    const rollbackStatus = restored ? '已恢复备份' : '本地回滚未完全成功'
+    throw new Error(`覆盖配置失败，${rollbackStatus}: ${(error as Error).message}`)
   }
 }
 
@@ -335,6 +434,7 @@ export async function mergeSync(
 
   // 备份本地配置
   const backupPaths: string[] = []
+  let grokSnapshot: FileSnapshot | undefined
 
   try {
     for (const tool of toolKeys) {
@@ -345,11 +445,20 @@ export async function mergeSync(
         backupPaths.push(backupConfig(configPath))
       }
     }
+
+    const grokMerge = mergeDataList.find(
+      ({ tool, localConfig, mergeResult }) =>
+        tool === MAIN_TOOL_TYPES.GROK &&
+        hasApplicableCurrentProvider({ ...localConfig, providers: mergeResult.merged })
+    )
+    if (grokMerge) grokSnapshot = captureFileSnapshot(getGrokConfigPath())
   } catch (error) {
     throw new Error(`备份失败: ${(error as Error).message}`)
   }
 
   // 写入合并后的配置到本地并上传到云端
+  const createdConfigPaths = new Set<string>()
+  let grokWriteAttempted = false
   try {
     for (let i = 0; i < mergeDataList.length; i++) {
       const { tool, localConfig, mergeResult } = mergeDataList[i]
@@ -384,9 +493,13 @@ export async function mergeSync(
       }
 
       // 写入本地
+      if (!fileExists(configPath)) createdConfigPaths.add(configPath)
       writeJSON(configPath, mergedConfig)
 
       // 自动应用当前 provider 到官方工具配置
+      if (tool === MAIN_TOOL_TYPES.GROK && hasApplicableCurrentProvider(mergedConfig)) {
+        grokWriteAttempted = true
+      }
       applyCurrentProvider(tool, mergedConfig)
 
       // 上传到云端（加密）
@@ -410,14 +523,14 @@ export async function mergeSync(
       backupPaths,
     }
   } catch (error) {
-    // 恢复备份
-    for (const backupPath of backupPaths) {
-      const originalPath = backupPath.replace(/\.backup\.\d+$/, '')
-      if (fs.existsSync(backupPath)) {
-        fs.copyFileSync(backupPath, originalPath)
-      }
-    }
-    throw new Error(`合并配置失败，已恢复备份: ${(error as Error).message}`)
+    const restored = rollbackLocalChanges(
+      backupPaths,
+      createdConfigPaths,
+      grokSnapshot,
+      grokWriteAttempted
+    )
+    const rollbackStatus = restored ? '已恢复备份' : '本地回滚未完全成功'
+    throw new Error(`合并配置失败，${rollbackStatus}: ${(error as Error).message}`)
   }
 }
 

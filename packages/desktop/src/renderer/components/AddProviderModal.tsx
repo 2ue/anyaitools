@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react'
 import { X, Plus, Package, ExternalLink, ArrowLeft } from 'lucide-react'
-import type { Provider, AddProviderInput, EditProviderInput, PresetTemplate } from '@anyaitools/types'
+import type {
+  Provider,
+  AddProviderInput,
+  EditProviderInput,
+  PresetTemplate,
+} from '@anyaitools/types'
 import ProviderForm from './ProviderForm'
 import { AlertDialog, ConfirmDialog } from './dialogs'
 
 interface Props {
   show: boolean
-  type: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw'
+  type: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
   onClose: () => void
   onSubmit: () => void
   onSuccess?: (message: string) => void
@@ -49,7 +54,9 @@ export default function AddProviderModal({ show, type, onClose, onSubmit, onSucc
           ? window.electronAPI.gemini
           : type === 'opencode'
             ? window.electronAPI.opencode
-            : window.electronAPI.openclaw
+            : type === 'openclaw'
+              ? window.electronAPI.openclaw
+              : window.electronAPI.grok
 
   const resetState = () => {
     setSelectedPreset(undefined)
@@ -184,7 +191,9 @@ export default function AddProviderModal({ show, type, onClose, onSubmit, onSucc
                   ? 'Gemini CLI'
                   : type === 'opencode'
                     ? 'OpenCode'
-                    : 'OpenClaw'}{' '}
+                    : type === 'openclaw'
+                      ? 'OpenClaw'
+                      : 'Grok Build'}{' '}
             服务商
           </h2>
           <button
@@ -264,7 +273,9 @@ export default function AddProviderModal({ show, type, onClose, onSubmit, onSucc
                         className="text-xs text-gray-600 font-mono mb-3 truncate"
                         title={preset.baseUrl}
                       >
-                        {preset.baseUrl}
+                        {type === 'grok' && !preset.baseUrl
+                          ? `内置模型: ${preset.model || 'grok-build'}`
+                          : preset.baseUrl}
                       </p>
 
                       <div className="flex gap-2 pt-2 border-t border-gray-100">

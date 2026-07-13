@@ -18,6 +18,14 @@ export function readJSON<T>(filePath: string): T {
 }
 
 /**
+ * 为同目录原子写入生成跨进程不冲突的临时文件名。
+ */
+export function createAtomicTempPath(filePath: string): string {
+  const nonce = Math.random().toString(36).slice(2)
+  return `${filePath}.${process.pid}.${Date.now()}.${nonce}.tmp`
+}
+
+/**
  * 写入 JSON 文件（原子操作）
  * 使用 write temp + rename 保证原子性
  */
@@ -28,11 +36,22 @@ export function writeJSON(filePath: string, data: unknown): void {
   ensureDir(dir)
 
   // 写入临时文件
-  const tmpPath = `${filePath}.tmp`
-  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { mode: 0o600 })
+  const tmpPath = createAtomicTempPath(filePath)
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { mode: 0o600 })
 
-  // 原子性重命名
-  fs.renameSync(tmpPath, filePath)
+    // 原子性重命名
+    fs.renameSync(tmpPath, filePath)
+  } catch (error) {
+    if (fileExists(tmpPath)) {
+      try {
+        fs.unlinkSync(tmpPath)
+      } catch {
+        // Preserve the original write failure.
+      }
+    }
+    throw error
+  }
 }
 
 /**

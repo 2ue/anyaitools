@@ -24,6 +24,10 @@ let claudeDir: string = path.join(rootDir, '.claude')
 const geminiDir: string = path.join(rootDir, '.gemini')
 let opencodeDir: string = path.join(rootDir, '.config', 'opencode')
 let openclawDir: string = path.join(rootDir, '.openclaw')
+const configuredGrokHome = process.env.GROK_HOME?.trim()
+let grokDir: string = configuredGrokHome
+  ? path.resolve(configuredGrokHome)
+  : path.join(rootDir, '.grok')
 
 /**
  * 获取 anyaitools 配置目录
@@ -65,6 +69,13 @@ export function getOpenCodeDir(): string {
  */
 export function getOpenClawDir(): string {
   return openclawDir
+}
+
+/**
+ * 获取 Grok CLI 用户配置目录（优先使用 GROK_HOME）
+ */
+export function getGrokDir(): string {
+  return grokDir
 }
 
 /**
@@ -153,6 +164,13 @@ export function getOpenClawModelsPath(): string {
 }
 
 /**
+ * 获取 Grok CLI 用户配置文件路径（$GROK_HOME/config.toml）
+ */
+export function getGrokConfigPath(): string {
+  return path.join(grokDir, 'config.toml')
+}
+
+/**
  * 测试专用 API：设置自定义路径
  * 仅在测试环境可用，用于精确控制测试路径
  */
@@ -162,6 +180,7 @@ export function __setTestPaths(paths: {
   claude?: string
   opencode?: string
   openclaw?: string
+  grok?: string
 }): void {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('__setTestPaths can only be used in test environment')
@@ -171,4 +190,5 @@ export function __setTestPaths(paths: {
   if (paths.claude) claudeDir = paths.claude
   if (paths.opencode) opencodeDir = paths.opencode
   if (paths.openclaw) openclawDir = paths.openclaw
+  if (paths.grok) grokDir = paths.grok
 }

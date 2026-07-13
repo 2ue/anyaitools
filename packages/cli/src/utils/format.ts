@@ -7,7 +7,8 @@ import type { Provider } from '@anyaitools/core'
 export function formatProviderTable(
   providers: Provider[],
   currentId: string | undefined,
-  title?: string
+  title?: string,
+  options: { showModelDetails?: boolean } = {}
 ): string {
   const lines: string[] = []
 
@@ -25,9 +26,18 @@ export function formatProviderTable(
     const tag = isCurrent ? chalk.green(' [当前]') : ''
     lines.push(`  ${marker}  ${name}${tag}`)
 
-    const urlText = p.baseUrl || '(默认端点)'
+    const urlText = p.baseUrl || (options.showModelDetails ? '(Grok 内置端点)' : '(默认端点)')
     const url = isCurrent ? chalk.green(urlText) : chalk.gray(urlText)
     lines.push(`     ${url}`)
+
+    if (options.showModelDetails && p.model) {
+      const details = [p.model]
+      if (p.baseUrl && p.apiBackend) details.push(p.apiBackend)
+      if (p.baseUrl && p.supportsBackendSearch !== undefined) {
+        details.push(`Backend Search: ${p.supportsBackendSearch ? '启用' : '禁用'}`)
+      }
+      lines.push(`     ${chalk.gray(details.join(' · '))}`)
+    }
 
     if (p.desc) {
       const desc = isCurrent ? chalk.green(p.desc) : chalk.gray(p.desc)

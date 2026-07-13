@@ -7,6 +7,7 @@ import {
   McpIcon,
   OpenCodeIcon,
   OpenClawIcon,
+  GrokIcon,
 } from './icons/BrandIcons'
 import type { NavKey } from './DashboardPage'
 
@@ -41,6 +42,7 @@ export default function MiniSidebar({ activeKey, onNavigate }: MiniSidebarProps)
     { key: 'gemini', icon: GeminiIcon, label: 'Gemini CLI', isBrandIcon: true },
     { key: 'opencode', icon: OpenCodeIcon, label: 'OpenCode', isBrandIcon: true },
     { key: 'openclaw', icon: OpenClawIcon, label: 'OpenClaw', isBrandIcon: true },
+    { key: 'grok', icon: GrokIcon, label: 'Grok Build', isBrandIcon: true },
     { key: 'mcp', icon: McpIcon, label: 'MCP 服务器', isBrandIcon: true },
     { key: 'service-providers', icon: Package, label: '预置服务商' },
     { key: 'clean', icon: Trash2, label: '清理工具' },

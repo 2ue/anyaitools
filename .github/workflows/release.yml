@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to publish from the selected branch
+        required: true
+        type: string
+
+env:
+  RELEASE_VERSION_INPUT: ${{ inputs.version }}
 
 jobs:
   # ============================================================================
@@ -33,12 +42,20 @@ jobs:
       - name: Verify workspace versions
         run: pnpm verify:versions
 
+      - name: Verify npm publish packages
+        run: pnpm verify:publish-packages
+
       - name: Build packages (exclude desktop)
         run: pnpm build
 
-      - name: Extract version from tag
+      - name: Resolve release version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="$RELEASE_VERSION_INPUT"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Verify version match
         run: |
@@ -103,9 +120,14 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Extract version from tag
+      - name: Resolve release version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="$RELEASE_VERSION_INPUT"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -162,10 +184,15 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Extract version from tag
+      - name: Resolve release version
         id: version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="$RELEASE_VERSION_INPUT"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -191,9 +218,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Extract version from tag
+      - name: Resolve release version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="$RELEASE_VERSION_INPUT"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -228,30 +260,36 @@ jobs:
           cd packages/cli
           # 备份原始 package.json
           cp package.json package.json.bak
-          # 修改包名为 anyaitools，删除 @anyaitools/core 和 workspace 依赖（源码已编译到 dist）
+          # 删除 @anyaitools/core workspace 依赖（源码已编译到 dist）
           node -e "
             const pkg = require('./package.json');
-            pkg.name = 'anyaitools';
+            if (pkg.name !== '@vebing-tools/anyaitools') {
+              throw new Error('Unexpected CLI package name: ' + pkg.name);
+            }
             delete pkg.dependencies['@anyaitools/core'];
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
 
-      - name: Publish anyaitools CLI
+      - name: Publish @vebing-tools/anyaitools CLI
         run: |
           cd packages/cli
-          if npm view anyaitools@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
-            echo "anyaitools@${{ steps.version.outputs.VERSION }} already published, skip"
+          PACKAGE='@vebing-tools/anyaitools'
+          VERSION='${{ steps.version.outputs.VERSION }}'
+          if npm view "${PACKAGE}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${PACKAGE}@${VERSION} already published, skip"
           else
             npm publish --access public --provenance
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish aicoding
+      - name: Publish @vebing-tools/aicoding
         run: |
           cd packages/aicoding
-          if npm view @2ue/aicoding@${{ steps.version.outputs.VERSION }} version >/dev/null 2>&1; then
-            echo "@2ue/aicoding@${{ steps.version.outputs.VERSION }} already published, skip"
+          PACKAGE='@vebing-tools/aicoding'
+          VERSION='${{ steps.version.outputs.VERSION }}'
+          if npm view "${PACKAGE}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${PACKAGE}@${VERSION} already published, skip"
           else
             npm publish --access public --provenance
           fi
@@ -270,6 +308,7 @@ jobs:
 
   create-release:
     needs: publish-npm
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -280,9 +319,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract version from tag
+      - name: Resolve release version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="$RELEASE_VERSION_INPUT"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare release notes
         id: release_notes
@@ -301,7 +345,7 @@ jobs:
         run: ls -R
 
       - name: Create GitHub Release with all artifacts
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ steps.version.outputs.VERSION }}
           body: |
@@ -313,26 +357,26 @@ jobs:
 
             ## 📦 npm 包已发布
 
-            - [anyaitools@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/anyaitools)
-            - [@2ue/aicoding@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/@2ue/aicoding)
+            - [@vebing-tools/anyaitools@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/@vebing-tools/anyaitools)
+            - [@vebing-tools/aicoding@${{ steps.version.outputs.VERSION }}](https://www.npmjs.com/package/@vebing-tools/aicoding)
 
             ## 📥 CLI 安装
 
             ```bash
-            npm install -g anyaitools
+            npm install -g @vebing-tools/anyaitools
             ```
 
             ## 🚀 CLI 使用
 
             ```bash
             # 进入交互式菜单
-            anyaitools
+            aat
 
             # 管理 Codex 服务商
-            anyaitools cx
+            aat cx
 
             # 管理 Claude Code 服务商
-            anyaitools cc
+            aat cc
             ```
 
             ## 🖥️ Desktop 应用下载

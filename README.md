@@ -1,10 +1,10 @@
 # anyaitools
 
-一个面向 **Any AI Tools** 工作流的配置与集成工具，统一连接 **Codex / Claude Code / Gemini CLI / OpenCode / OpenClaw / MCP**，支持 CLI + Desktop，并提供同步、导入导出与清理能力。
+一个面向 **Any AI Tools** 工作流的配置与集成工具，统一连接 **Codex / Claude Code / Gemini CLI / OpenCode / OpenClaw / xAI Grok Build / MCP**，支持 CLI + Desktop，并提供同步、导入导出与清理能力。
 
 ## ✨ 功能概览
 
-- **一键切换服务商**：Codex / Claude Code / Gemini CLI / OpenCode
+- **一键切换服务商**：Codex / Claude Code / Gemini CLI / OpenCode / OpenClaw / Grok Build
 - **内置预设模板**：提供常用模板（Desktop 支持自定义预设）
 - **安全写入**：关键配置覆盖前自动备份（`.bak`，权限 `600`）
 - **MCP 管理**：集中管理 MCP 服务器（可在 Desktop 选择同步到 Claude/Gemini，Codex 暂不支持）
@@ -12,15 +12,23 @@
 - **导入/导出**：仅支持 Codex / Claude 配置
 - **Claude 历史清理**：分析并清理 `~/.claude.json`
 
+## 安装 CLI
+
+```bash
+npm install -g @vebing-tools/anyaitools
+aat --help
+```
+
 ## ✅ 支持的工具与配置路径
 
-| 工具            | 主要配置文件                                                                | 说明                                                                                        |
-| --------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Codex**       | `~/.codex/config.toml` + `~/.codex/auth.json`                               | `auth.json` 使用 `OPENAI_API_KEY`                                                           |
-| **Claude Code** | `~/.claude/settings.json`                                                   | 另有历史文件 `~/.claude.json`                                                               |
-| **Gemini CLI**  | `~/.gemini/settings.json` + `~/.gemini/.env`                                | `.env` 使用 `GOOGLE_GEMINI_BASE_URL` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `GEMINI_MODEL` |
-| **OpenCode**    | `~/.config/opencode/opencode.json`                                          | 写入 `provider` 配置与模型变体                                                              |
-| **anyaitools**   | `~/.anyaitools/{codex,claude,gemini,opencode,mcp}.json` + `~/.anyaitools/config.json` | 保存工具配置与 MCP 配置，WebDAV 同步配置存放在 `config.json`                               |
+| 工具            | 主要配置文件                                                          | 说明                                                                                        |
+| --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Codex**       | `~/.codex/config.toml` + `~/.codex/auth.json`                         | `auth.json` 使用 `OPENAI_API_KEY`                                                           |
+| **Claude Code** | `~/.claude/settings.json`                                             | 另有历史文件 `~/.claude.json`                                                               |
+| **Gemini CLI**  | `~/.gemini/settings.json` + `~/.gemini/.env`                          | `.env` 使用 `GOOGLE_GEMINI_BASE_URL` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `GEMINI_MODEL` |
+| **OpenCode**    | `~/.config/opencode/opencode.json`                                    | 写入 `provider` 配置与模型变体                                                              |
+| **Grok Build**  | `$GROK_HOME/config.toml`，默认 `~/.grok/config.toml`                  | xAI 官方 TOML；支持 OAuth、`XAI_API_KEY` 和兼容服务商                                       |
+| **anyaitools**  | `~/.anyaitools/{codex,claude,gemini,opencode,openclaw,grok,mcp}.json` | 保存各工具服务商配置；WebDAV 连接配置存放在 `config.json`                                   |
 
 ## 📦 内置预设
 
@@ -47,6 +55,10 @@
 - **OKMCode**：`https://okmcode.com`（npm: `@ai-sdk/openai`）
 - **OKMCode**：`https://okmcode.com`（npm: `@ai-sdk/openai`）
 
+### Grok Build
+
+- **xAI Grok Build**：官方内置 `grok-build` 模型，保留 Grok 登录与内置路由
+
 ## 🧭 CLI 使用速览
 
 ### 交互式入口
@@ -65,18 +77,22 @@ $ aat
     🔶 Codex 管理
     💎 Gemini 管理
     🧩 OpenCode 管理
+    🦀 OpenClaw 管理
+    ✕ Grok Build 管理
     🔄 WebDAV 同步
     📦 预置服务商管理
     ❌ 退出
 ```
 
-### Codex / Claude / Gemini / OpenCode 服务商管理
+### 服务商管理
 
 ```bash
 aat cx add|list|use|current|edit|remove|clone
 aat cc add|list|use|current|edit|remove|clone|clean:analyze|clean
 aat gm add|list|use|current|edit|remove|clone
 aat oc add|list|use|current|edit|remove|clone
+aat openclaw add|list|use|current|edit|remove|clone
+aat grok add|list|use|current|edit|remove|clone  # gk 是等价别名
 ```
 
 常用命令支持参数模式，适合非交互执行：
@@ -87,6 +103,37 @@ aat cc add --preset OKMCode --api-key sk-xxx --switch
 aat gm edit default --new-name personal --base-url '' --api-key ''
 aat oc remove old-provider --yes
 ```
+
+#### xAI Grok Build
+
+AnyAI Tools 接入的是 xAI 官方 `@xai-official/grok`，不是社区历史包
+`@vibe-kit/grok-cli`。官方 CLI 需要 Node.js 20 或更高版本：
+
+```bash
+npm install -g @xai-official/grok
+grok version
+
+# 内置预设只选择 grok-build，不创建自定义端点或内联 Key。
+aat gk add --preset "xAI Grok Build" --switch
+grok inspect
+```
+
+自定义端点需要显式提供 URL、模型和协议。Base URL 会按输入写入，不根据域名改写：
+
+```bash
+aat gk add \
+  --name custom \
+  --base-url https://gateway.example.com/custom \
+  --api-key sk-example \
+  --model model-id \
+  --api-backend chat_completions \
+  --no-supports-backend-search \
+  --switch
+```
+
+Grok 用户配置位于 `$GROK_HOME/config.toml`，默认是 `~/.grok/config.toml`。企业
+requirements 或环境变量可能覆盖用户配置，因此以 `grok inspect` 显示的最终配置为准。
+详见 [Grok Build 接入指南](docs/grok-build.md)。
 
 交互式工具菜单（以 Codex 为例）：
 
@@ -1151,7 +1198,7 @@ packages/
 pnpm install
 
 # 启动 CLI（开发模式）
-pnpm --filter anyaitools dev
+pnpm --filter @vebing-tools/anyaitools dev
 
 # 启动 Desktop（可选）
 pnpm --filter @anyaitools/desktop dev

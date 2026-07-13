@@ -1,6 +1,6 @@
 /**
  * anyaitools Core Module
- * Business logic for managing Codex/Claude/Gemini/OpenCode/OpenClaw providers
+ * Business logic for managing Codex/Claude/Gemini/OpenCode/OpenClaw/Grok providers
  */
 import { loadVersion } from './version.js'
 
@@ -27,7 +27,9 @@ export {
   createGeminiManager,
   createOpenCodeManager,
   createOpenClawManager,
+  createGrokManager,
   type ToolManager,
+  type ApiBackend,
   type Provider,
   type WriteOptions,
   type EditOptions,
@@ -46,6 +48,7 @@ export { MCP_PRESETS, MCP_PRESETS_DETAIL, type MCPPresetDetail } from './presets
 export { GEMINI_PRESETS } from './presets/gemini.js'
 export { OPENCODE_PRESETS } from './presets/opencode.js'
 export { OPENCLAW_PRESETS } from './presets/openclaw.js'
+export { GROK_PRESETS } from './presets/grok.js'
 
 // MCP Writers (导出辅助函数)
 export {
@@ -75,6 +78,7 @@ export {
   getGeminiDir,
   getOpenCodeDir,
   getOpenClawDir,
+  getGrokDir,
   getConfigPath,
   getCodexConfigPath,
   getCodexAuthPath,
@@ -85,6 +89,7 @@ export {
   getOpenCodeConfigPath,
   getOpenClawConfigPath,
   getOpenClawModelsPath,
+  getGrokConfigPath,
   __setTestPaths,
 } from './paths.js'
 

@@ -1,10 +1,11 @@
 import { Play, Edit2, Trash2, Copy, Check, Globe } from 'lucide-react'
 import type { Provider } from '@anyaitools/types'
+import type { ToolType } from '../styles/brand-colors'
 
 interface Props {
   providers: Provider[]
   currentProviderId: string | undefined
-  tool: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw'
+  tool: ToolType
   onSwitch: (id: string) => void
   onEdit: (provider: Provider) => void
   onDelete: (id: string, name: string) => void
@@ -14,6 +15,7 @@ interface Props {
 export default function ProviderGrid({
   providers,
   currentProviderId,
+  tool,
   onSwitch,
   onEdit,
   onDelete,
@@ -54,8 +56,27 @@ export default function ProviderGrid({
 
             {/* URL */}
             <p className="text-xs text-gray-500 font-mono mb-1 truncate" title={provider.baseUrl}>
-              {provider.baseUrl}
+              {tool === 'grok' && !provider.baseUrl ? 'Grok Build 内置模型' : provider.baseUrl}
             </p>
+
+            {tool === 'grok' && (
+              <div className="mb-1 flex min-w-0 items-center gap-1.5 text-xs text-gray-400">
+                <span className="truncate font-mono" title={provider.model}>
+                  {provider.model}
+                </span>
+                {provider.baseUrl && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="truncate">{provider.apiBackend || 'chat_completions'}</span>
+                    {provider.supportsBackendSearch && (
+                      <span className="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5">
+                        Search
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             {provider.desc && (

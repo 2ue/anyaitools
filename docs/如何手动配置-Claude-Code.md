@@ -257,7 +257,7 @@ aat cc current
 如果你需要频繁切换服务商，强烈建议安装 anyaitools：
 
 ```bash
-npm install -g anyaitools
+npm install -g @vebing-tools/anyaitools
 ```
 
 更多信息请参考：[anyaitools 官方文档](https://github.com/2ue/anyaitools)

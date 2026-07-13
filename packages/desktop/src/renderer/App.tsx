@@ -20,6 +20,7 @@ import CodexPage from './components/CodexPage'
 import GeminiPage from './components/GeminiPage'
 import OpenCodePage from './components/OpenCodePage'
 import OpenClawPage from './components/OpenClawPage'
+import GrokPage from './components/GrokPage'
 import MCPManagerPage from './components/MCPManagerPage'
 import ServiceProviderConfigPage from './components/ServiceProviderConfigPage'
 import CleanPage from './components/CleanPage'
@@ -56,15 +57,19 @@ export default function App() {
   const [openclawProviders, setOpenClawProviders] = useState<Provider[]>([])
   const [currentOpenClaw, setCurrentOpenClaw] = useState<Provider | undefined>()
 
+  // Grok Build 数据
+  const [grokProviders, setGrokProviders] = useState<Provider[]>([])
+  const [currentGrok, setCurrentGrok] = useState<Provider | undefined>()
+
   // Modal 状态
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTool, setAddModalTool] = useState<
-    'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw'
+    'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
   >('claude')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingProvider, setEditingProvider] = useState<Provider | undefined>()
   const [editingTool, setEditingTool] = useState<
-    'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw'
+    'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
   >('claude')
   const [isCloneMode, setIsCloneMode] = useState(false)
 
@@ -74,6 +79,7 @@ export default function App() {
   const [geminiPresetsCount, setGeminiPresetsCount] = useState(0)
   const [opencodePresetsCount, setOpencodePresetsCount] = useState(0)
   const [openclawPresetsCount, setOpenClawPresetsCount] = useState(0)
+  const [grokPresetsCount, setGrokPresetsCount] = useState(0)
 
   // Dialog 状态
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -156,6 +162,16 @@ export default function App() {
         setCurrentOpenClaw(openclawCurrent)
         const openclawPresets = await window.electronAPI.openclaw.listPresets()
         setOpenClawPresetsCount(openclawPresets.length)
+      }
+
+      // 加载 Grok Build 数据
+      if (window.electronAPI.grok) {
+        const grokList = await window.electronAPI.grok.listProviders()
+        setGrokProviders(grokList)
+        const grokCurrent = await window.electronAPI.grok.getCurrent()
+        setCurrentGrok(grokCurrent)
+        const grokPresets = await window.electronAPI.grok.listPresets()
+        setGrokPresetsCount(grokPresets.length)
       }
     } catch (error) {
       console.error('加载数据失败：', error)
@@ -492,6 +508,65 @@ export default function App() {
   }
 
   // ============================================================================
+  // Grok Build 操作
+  // ============================================================================
+
+  const handleGrokSwitch = async (id: string) => {
+    try {
+      await window.electronAPI.grok.switchProvider(id)
+      await loadData()
+      setToast({ show: true, message: '切换成功' })
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: '切换失败',
+        message: (error as Error).message,
+        type: 'error',
+      })
+    }
+  }
+
+  const handleGrokDelete = (id: string, name: string) => {
+    setConfirmDialog({
+      show: true,
+      title: '确认删除',
+      message: `确定要删除 "${name}" 吗？`,
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, show: false }))
+        try {
+          await window.electronAPI.grok.removeProvider(id)
+          await loadData()
+          setToast({ show: true, message: '删除成功' })
+        } catch (error) {
+          setAlertDialog({
+            show: true,
+            title: '删除失败',
+            message: (error as Error).message,
+            type: 'error',
+          })
+        }
+      },
+    })
+  }
+
+  const handleGrokClone = (provider: Provider) => {
+    setEditingProvider({
+      ...provider,
+      name: `${provider.name}（副本）`,
+    })
+    setEditingTool('grok')
+    setIsCloneMode(true)
+    setShowEditModal(true)
+  }
+
+  const handleGrokEdit = (provider: Provider) => {
+    setEditingProvider(provider)
+    setEditingTool('grok')
+    setIsCloneMode(false)
+    setShowEditModal(true)
+  }
+
+  // ============================================================================
   // 导航操作
   // ============================================================================
 
@@ -513,7 +588,9 @@ export default function App() {
   // 通用操作
   // ============================================================================
 
-  const handleAddProvider = (tool: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw') => {
+  const handleAddProvider = (
+    tool: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
+  ) => {
     setAddModalTool(tool)
     setShowAddModal(true)
   }
@@ -531,7 +608,9 @@ export default function App() {
               ? window.electronAPI.gemini
               : editingTool === 'opencode'
                 ? window.electronAPI.opencode
-                : window.electronAPI.openclaw
+                : editingTool === 'openclaw'
+                  ? window.electronAPI.openclaw
+                  : window.electronAPI.grok
 
       if (isCloneMode) {
         // 克隆模式：创建新服务商
@@ -632,6 +711,11 @@ export default function App() {
               current: currentOpenClaw,
               presetsCount: openclawPresetsCount,
             }}
+            grokData={{
+              providers: grokProviders,
+              current: currentGrok,
+              presetsCount: grokPresetsCount,
+            }}
             onEnterPage={handleEnterPage}
           />
         )}
@@ -698,6 +782,19 @@ export default function App() {
             onEdit={handleOpenClawEdit}
             onDelete={handleOpenClawDelete}
             onClone={handleOpenClawClone}
+          />
+        )}
+
+        {/* Grok Build 页面 */}
+        {currentView === 'grok' && (
+          <GrokPage
+            providers={grokProviders}
+            currentProvider={currentGrok}
+            onAdd={() => handleAddProvider('grok')}
+            onSwitch={handleGrokSwitch}
+            onEdit={handleGrokEdit}
+            onDelete={handleGrokDelete}
+            onClone={handleGrokClone}
           />
         )}
 
@@ -772,7 +869,7 @@ export default function App() {
       {/* Edit/Clone Provider Modal */}
       {showEditModal && editingProvider && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               {isCloneMode ? '克隆' : '编辑'}服务商 -{' '}
               {editingTool === 'claude'
@@ -783,7 +880,9 @@ export default function App() {
                     ? 'Gemini'
                     : editingTool === 'opencode'
                       ? 'OpenCode'
-                      : 'OpenClaw'}
+                      : editingTool === 'openclaw'
+                        ? 'OpenClaw'
+                        : 'Grok Build'}
             </h2>
             <ProviderForm
               provider={editingProvider}
@@ -798,7 +897,9 @@ export default function App() {
                       ? geminiProviders
                       : editingTool === 'opencode'
                         ? opencodeProviders
-                        : openclawProviders
+                        : editingTool === 'openclaw'
+                          ? openclawProviders
+                          : grokProviders
               }
               onSubmit={handleEditSubmit}
               onCancel={() => {
