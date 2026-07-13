@@ -278,7 +278,7 @@ jobs:
           if npm view "${PACKAGE}@${VERSION}" version >/dev/null 2>&1; then
             echo "${PACKAGE}@${VERSION} already published, skip"
           else
-            npm publish --access public --provenance
+            npm publish --access public
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -291,7 +291,7 @@ jobs:
           if npm view "${PACKAGE}@${VERSION}" version >/dev/null 2>&1; then
             echo "${PACKAGE}@${VERSION} already published, skip"
           else
-            npm publish --access public --provenance
+            npm publish --access public
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
