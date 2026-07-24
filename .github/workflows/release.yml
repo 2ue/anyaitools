@@ -334,7 +334,7 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           {
             echo 'content<<EOF'
-            echo "anyaitools ${VERSION} release."
+            echo "AnyAI Tools ${VERSION} release."
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
@@ -347,7 +347,7 @@ jobs:
       - name: Create GitHub Release with all artifacts
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.version.outputs.VERSION }}
+          name: AnyAI Tools ${{ steps.version.outputs.VERSION }}
           body: |
             ## 📝 更新内容
 
@@ -382,14 +382,14 @@ jobs:
             ## 🖥️ Desktop 应用下载
 
             ### macOS
-            - **Intel (x64)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-x64.dmg`
-            - **Apple Silicon (ARM64)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg`
-            - **Universal (Intel + Apple Silicon)**: `anyaitools-${{ steps.version.outputs.VERSION }}-macos-universal.dmg`
+            - **Intel (x64)**: `AnyAI-Tools-${{ steps.version.outputs.VERSION }}-macos-x64.dmg`
+            - **Apple Silicon (ARM64)**: `AnyAI-Tools-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg`
+            - **Universal (Intel + Apple Silicon)**: `AnyAI-Tools-${{ steps.version.outputs.VERSION }}-macos-universal.dmg`
 
             下载对应的 `.dmg` 文件，双击安装即可。
 
             ### Windows
-            - **64-bit**: `anyaitools-${{ steps.version.outputs.VERSION }}-windows-x64.exe`
+            - **64-bit**: `AnyAI-Tools-${{ steps.version.outputs.VERSION }}-windows-x64.exe`
 
             下载 `.exe` 文件，双击安装即可。
 

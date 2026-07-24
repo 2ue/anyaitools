@@ -59,7 +59,7 @@ export default function DashboardPage({
             <span className="text-sm font-bold leading-none">AI</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900">anyaitools</h1>
+            <h1 className="text-2xl font-bold text-gray-900">AnyAI Tools</h1>
             <p className="mt-1 text-sm text-gray-500">
               AI 代码助手配置管理工具 · 统一管理多个 AI 代码工具的 API 配置
             </p>

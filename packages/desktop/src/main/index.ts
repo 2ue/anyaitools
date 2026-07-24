@@ -78,6 +78,11 @@ const isDev = process.env.NODE_ENV === 'development'
 const isDebugMode = process.env.ANYAITOOLS_DEBUG === '1'
 let logStream: fs.WriteStream | null = null
 
+function getIconAssetPath(fileName: string) {
+  const relativePath = path.join('build', fileName)
+  return isDev ? path.join(__dirname, '../../', relativePath) : path.join(process.resourcesPath, relativePath)
+}
+
 if (!isDev) {
   const logDir = path.join(getAnyAIToolsDir(), 'logs')
   fs.mkdirSync(logDir, { recursive: true })
@@ -238,7 +243,7 @@ function createWindow() {
   // 图标路径：开发模式从 build 目录读取，生产模式 electron-builder 会自动处理
   // macOS 使用 .icns，其他平台使用 .png
   const iconExt = process.platform === 'darwin' ? 'icns' : 'png'
-  const iconPath = path.join(__dirname, `../../build/icon.${iconExt}`)
+  const iconPath = getIconAssetPath(`icon.${iconExt}`)
 
   console.log('[Main] Preload path:', preloadPath)
   console.log('[Main] Preload exists:', fs.existsSync(preloadPath))
@@ -840,7 +845,7 @@ ipcMain.handle(
             {
               name: 'settings.json',
               path,
-              content: '# 配置文件不存在\n# 请先使用 anyaitools 添加服务商，配置文件将自动创建',
+              content: '# 配置文件不存在\n# 请先使用 AnyAI Tools 添加服务商，配置文件将自动创建',
               language: 'json' as const,
             },
           ]
@@ -897,7 +902,7 @@ ipcMain.handle(
           result.push({
             name: 'config.toml',
             path: configPath,
-            content: '# 配置文件不存在\n# 请先使用 anyaitools 添加服务商，配置文件将自动创建',
+            content: '# 配置文件不存在\n# 请先使用 AnyAI Tools 添加服务商，配置文件将自动创建',
             language: 'toml' as const,
           })
         }
@@ -914,7 +919,7 @@ ipcMain.handle(
           result.push({
             name: 'auth.json',
             path: authPath,
-            content: '{\n  "注意": "配置文件不存在，请先使用 anyaitools 添加服务商"\n}',
+            content: '{\n  "注意": "配置文件不存在，请先使用 AnyAI Tools 添加服务商"\n}',
             language: 'json' as const,
           })
         }
@@ -1153,16 +1158,16 @@ ipcMain.handle('read-anyaitools-config-files', async () => {
 
     return files
   } catch (error) {
-    throw new Error(`读取 anyaitools 配置文件失败：${(error as Error).message}`)
+    throw new Error(`读取 AnyAI Tools 配置文件失败：${(error as Error).message}`)
   }
 })
 
-// 写入 anyaitools 配置文件（用于 Settings 按钮）
+// 写入 AnyAI Tools 配置文件（用于 Settings 按钮）
 ipcMain.handle('write-anyaitools-config-files', async (_event, files: EditableConfigFile[]) => {
   try {
     return writeFilesWithBackup(files, 'desktop.write-anyaitools-config-files', false)
   } catch (error) {
-    throw new Error(`写入 anyaitools 配置文件失败：${(error as Error).message}`)
+    throw new Error(`写入 AnyAI Tools 配置文件失败：${(error as Error).message}`)
   }
 })
 
@@ -1518,7 +1523,7 @@ ipcMain.handle('mcp:remove-server', async (_event, id: string) => {
 app.whenReady().then(() => {
   // macOS: 设置 Dock 图标
   if (process.platform === 'darwin' && app.dock) {
-    const dockIconPath = path.join(__dirname, '../../build/icon.png')
+    const dockIconPath = getIconAssetPath('icon.png')
     if (fs.existsSync(dockIconPath)) {
       app.dock.setIcon(dockIconPath)
       console.log('[Main] Dock icon set:', dockIconPath)

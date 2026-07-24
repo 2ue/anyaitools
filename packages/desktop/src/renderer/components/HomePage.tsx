@@ -55,9 +55,9 @@ export default function HomePage({
           </button>
           <div className="flex items-center justify-center gap-3 mb-4">
             <Target className="w-10 h-10 text-blue-600" />
-            <h1 className="text-4xl font-bold text-gray-900">anyaitools</h1>
+            <h1 className="text-4xl font-bold text-gray-900">AnyAI Tools</h1>
           </div>
-          <p className="text-xl text-gray-600">Any AI Tools 配置与集成工具</p>
+          <p className="text-xl text-gray-600">AnyAI Tools 配置与集成工具</p>
           <p className="text-sm text-gray-500 mt-2">
             统一连接和管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw 与 MCP
           </p>

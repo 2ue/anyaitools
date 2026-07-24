@@ -1,6 +1,6 @@
-# @anyaitools/desktop
+# @vebing-tools/anyaitools-desktop
 
-Desktop GUI for the Any AI Tools workspace, managing and syncing configurations across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP.
+Desktop GUI for AnyAI Tools, managing and syncing configurations across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP.
 
 ## Tech Stack
 

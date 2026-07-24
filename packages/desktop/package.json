@@ -1,8 +1,8 @@
 {
-  "name": "@anyaitools/desktop",
-  "version": "0.0.2",
+  "name": "@vebing-tools/anyaitools-desktop",
+  "version": "0.0.3",
   "private": true,
-  "description": "Desktop app for the Any AI Tools workspace",
+  "description": "Desktop app for AnyAI Tools",
   "main": "./dist/main/index.js",
   "scripts": {
     "dev": "NODE_ENV=development vite",
@@ -16,7 +16,7 @@
   },
   "keywords": [
     "electron",
-    "anyaitools",
+    "AnyAI Tools",
     "desktop"
   ],
   "author": "",
@@ -49,13 +49,22 @@
   },
   "build": {
     "appId": "com.anyaitools.desktop",
-    "productName": "anyaitools",
+    "productName": "AnyAI Tools",
     "directories": {
       "output": "release",
       "buildResources": "build"
     },
     "files": [
       "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build",
+        "to": "build",
+        "filter": [
+          "icon.*"
+        ]
+      }
     ],
     "icon": "build/icon.png",
     "publish": [
@@ -67,6 +76,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
       "target": [
         {
           "target": "dmg",
@@ -85,9 +95,10 @@
           ]
         }
       ],
-      "artifactName": "${productName}-${version}-macos-${arch}.${ext}"
+      "artifactName": "AnyAI-Tools-${version}-macos-${arch}.${ext}"
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -96,7 +107,7 @@
           ]
         }
       ],
-      "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
+      "artifactName": "AnyAI-Tools-${version}-windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -109,11 +120,12 @@
       "deleteAppDataOnUninstall": false
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage"
       ],
       "category": "Development",
-      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+      "artifactName": "AnyAI-Tools-${version}-linux-${arch}.${ext}"
     }
   }
 }

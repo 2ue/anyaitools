@@ -21,8 +21,8 @@ export default function AboutPage() {
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-2">anyaitools</h1>
-          <p className="text-gray-600">Any AI Tools 配置与集成工具</p>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-2">AnyAI Tools</h1>
+          <p className="text-gray-600">AnyAI Tools 配置与集成工具</p>
           <p className="text-sm text-gray-500 mt-2">版本 {version}</p>
         </div>
 
@@ -30,7 +30,7 @@ export default function AboutPage() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold tracking-tight text-gray-900 mb-3">项目简介</h2>
           <p className="text-gray-700 leading-relaxed">
-            anyaitools 是一个面向 Any AI Tools 工作流的配置与集成工具。
+            AnyAI Tools 是一个面向 Any AI Tools 工作流的配置与集成工具。
             它帮助您统一管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw 与 MCP，
             并在多套配置之间快速切换、同步和维护。
           </p>

@@ -1201,7 +1201,7 @@ pnpm install
 pnpm --filter @vebing-tools/anyaitools dev
 
 # 启动 Desktop（可选）
-pnpm --filter @anyaitools/desktop dev
+pnpm --filter @vebing-tools/anyaitools-desktop dev
 ```
 
 构建全部包：

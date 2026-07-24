@@ -11,7 +11,7 @@ export default function Header({ onAddClick }: Props) {
         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
           <span className="text-white font-bold text-sm">AT</span>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900">anyaitools</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">AnyAI Tools</h1>
       </div>
 
       <button

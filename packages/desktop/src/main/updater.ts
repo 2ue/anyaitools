@@ -74,16 +74,16 @@ function archLabel(): 'x64' | 'arm64' {
 
 function chooseMacAssetName(version: string): string[] {
   // Prefer universal > arch-specific
-  const a = `anyaitools-${version}-macos-universal.dmg`
-  const b = `anyaitools-${version}-macos-${archLabel()}.dmg`
+  const a = `AnyAI-Tools-${version}-macos-universal.dmg`
+  const b = `AnyAI-Tools-${version}-macos-${archLabel()}.dmg`
   // electron-builder also emits .zip used for auto-update on mac
-  const zipA = `anyaitools-${version}-macos-universal.zip`
-  const zipB = `anyaitools-${version}-macos-${archLabel()}.zip`
+  const zipA = `AnyAI-Tools-${version}-macos-universal.zip`
+  const zipB = `AnyAI-Tools-${version}-macos-${archLabel()}.zip`
   return [a, b, zipA, zipB]
 }
 
 function chooseWinAssetName(version: string): string[] {
-  const exe = `anyaitools-${version}-windows-x64.exe`
+  const exe = `AnyAI-Tools-${version}-windows-x64.exe`
   return [exe]
 }
 
@@ -407,7 +407,7 @@ export function registerUpdaterHandlers(winProvider: () => BrowserWindow | null)
           defaultId: 0,
           cancelId: 1,
           message: '安装器已打开，请按提示将应用拖入“应用程序”文件夹。',
-          detail: '点击“立即退出”后，可在安装完成后重新启动 anyaitools。',
+          detail: '点击“立即退出”后，可在安装完成后重新启动 AnyAI Tools。',
         })
         if (r.response === 0) app.quit()
         return { ok: true }
