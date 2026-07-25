@@ -73,6 +73,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cli-build
+          retention-days: 1
           path: |
             packages/cli/dist
             packages/cli/package.json
@@ -133,6 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-mac
+          retention-days: 1
           path: |
             packages/desktop/release/*.dmg
             packages/desktop/release/*.dmg.blockmap
@@ -198,6 +200,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-win
+          retention-days: 1
           path: |
             packages/desktop/release/*.exe
             packages/desktop/release/*.exe.blockmap
