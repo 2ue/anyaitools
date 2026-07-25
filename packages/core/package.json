@@ -1,6 +1,6 @@
 {
   "name": "@anyaitools/core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "type": "module",
   "description": "Core logic for the Any AI Tools workspace across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, and MCP",
