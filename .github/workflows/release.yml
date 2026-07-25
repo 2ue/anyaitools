@@ -16,7 +16,7 @@ env:
 
 jobs:
   # ============================================================================
-  # 阶段 1: 并行构建所有产物
+  # 阶段 1: 构建校验与桌面产物发布
   # ============================================================================
 
   build-cli:
@@ -69,18 +69,11 @@ jobs:
             exit 1
           fi
 
-      - name: Upload CLI build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-build
-          retention-days: 1
-          path: |
-            packages/cli/dist
-            packages/cli/package.json
-            packages/cli/README.md
-
   build-desktop-mac:
+    needs: publish-npm
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -130,19 +123,24 @@ jobs:
           fi
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload macOS artifacts to GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
         with:
-          name: desktop-mac
-          retention-days: 1
-          path: |
+          files: |
             packages/desktop/release/*.dmg
             packages/desktop/release/*.dmg.blockmap
             packages/desktop/release/*.zip
             packages/desktop/release/*-mac.yml
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-desktop-win:
+    needs: build-desktop-mac
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -196,22 +194,24 @@ jobs:
           fi
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Windows artifacts to GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
         with:
-          name: desktop-win
-          retention-days: 1
-          path: |
+          files: |
             packages/desktop/release/*.exe
             packages/desktop/release/*.exe.blockmap
             packages/desktop/release/latest.yml
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================================
   # 阶段 2: 发布 npm 包
   # ============================================================================
 
   publish-npm:
-    needs: [build-cli, build-desktop-mac, build-desktop-win]
+    needs: build-cli
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -240,16 +240,35 @@ jobs:
       - name: Pin npm 11.5.1 for OIDC trusted publishing
         run: npm install -g npm@11.5.1
 
-      - name: Download CLI build artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
-          name: cli-build
-          path: packages/cli
+          version: 9.15.9
 
-      - name: Verify aicoding version match
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify workspace versions
+        run: pnpm verify:versions
+
+      - name: Verify npm publish packages
+        run: pnpm verify:publish-packages
+
+      - name: Build packages (exclude desktop)
+        run: pnpm build
+
+      - name: Verify publish version match
         run: |
+          CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
           AICODING_VERSION=$(node -p "require('./packages/aicoding/package.json').version")
           TAG_VERSION="${{ steps.version.outputs.VERSION }}"
+
+          if [ "$CLI_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch!"
+            echo "Tag: $TAG_VERSION"
+            echo "CLI: $CLI_VERSION"
+            exit 1
+          fi
 
           if [ "$AICODING_VERSION" != "$TAG_VERSION" ]; then
             echo "Version mismatch!"
@@ -306,11 +325,11 @@ jobs:
           mv package.json.bak package.json
 
   # ============================================================================
-  # 阶段 3: 创建 GitHub Release 并上传所有产物
+  # 阶段 3: 更新 GitHub Release 元信息
   # ============================================================================
 
   create-release:
-    needs: publish-npm
+    needs: build-desktop-win
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -341,13 +360,7 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Display structure of downloaded files
-        run: ls -R
-
-      - name: Create GitHub Release with all artifacts
+      - name: Update GitHub Release notes
         uses: softprops/action-gh-release@v2
         with:
           name: AnyAI Tools ${{ steps.version.outputs.VERSION }}
@@ -398,14 +411,6 @@ jobs:
 
             ---
 
-          files: |
-            desktop-mac/*.dmg
-            desktop-mac/*.dmg.blockmap
-            desktop-mac/*.zip
-            desktop-mac/*-mac.yml
-            desktop-win/*.exe
-            desktop-win/*.exe.blockmap
-            desktop-win/latest.yml
           draft: false
           prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') }}
         env:
