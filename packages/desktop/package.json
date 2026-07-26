@@ -1,6 +1,6 @@
 {
   "name": "@vebing-tools/anyaitools-desktop",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "description": "Desktop app for AnyAI Tools",
   "main": "./dist/main/index.js",
