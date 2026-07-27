@@ -3,14 +3,48 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { __setTestPaths, getAnyAIToolsDir } from './paths.js'
-import { validateExport, exportConfig, validateImportDir, importConfig } from './export.js'
+import {
+  validateExport,
+  exportConfig,
+  validateImportSource,
+  validateImportDir,
+  importConfig,
+} from './export.js'
+
+function createTestDir(): string {
+  return path.join(
+    os.tmpdir(),
+    `anyaitools-export-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  )
+}
+
+function writeJson(filePath: string, data: unknown): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+}
+
+function providerConfig(id: string, apiKey = `sk-${id}`) {
+  return {
+    currentProviderId: id,
+    providers: [
+      {
+        id,
+        name: id,
+        baseUrl: 'https://api.example.test/v1',
+        apiKey,
+        createdAt: 1,
+        lastModified: 1,
+      },
+    ],
+    presets: [],
+  }
+}
 
 describe('export/import', () => {
+  let testDir: string
+
   beforeEach(() => {
-    const testDir = path.join(
-      os.tmpdir(),
-      `anyaitools-export-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
+    testDir = createTestDir()
 
     __setTestPaths({
       anyaitools: path.join(testDir, '.anyaitools'),
@@ -18,109 +52,117 @@ describe('export/import', () => {
       claude: path.join(testDir, '.claude'),
       opencode: path.join(testDir, '.config', 'opencode'),
       openclaw: path.join(testDir, '.openclaw'),
+      grok: path.join(testDir, '.grok'),
     })
 
-    fs.rmSync(path.join(testDir, '.anyaitools'), { recursive: true, force: true })
+    fs.rmSync(testDir, { recursive: true, force: true })
   })
 
-  it('should allow export when only openclaw.json exists', () => {
+  it('exports an encrypted backup file and imports it directly', () => {
     const anyaitoolsDir = getAnyAIToolsDir()
-    fs.mkdirSync(anyaitoolsDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(anyaitoolsDir, 'openclaw.json'),
-      JSON.stringify({ providers: [], presets: [] }, null, 2),
-      'utf-8'
-    )
+    writeJson(path.join(anyaitoolsDir, 'codex.json'), providerConfig('codex-current'))
+    writeJson(path.join(anyaitoolsDir, 'gemini.json'), providerConfig('gemini-current'))
+    writeJson(path.join(anyaitoolsDir, 'mcp.json'), {
+      servers: [
+        {
+          id: 'mcp-1',
+          name: 'secret-server',
+          command: 'npx',
+          args: ['-y', 'tool', '--token', 'mcp-secret'],
+          env: { TOKEN: 'env-secret' },
+          createdAt: 1,
+          lastModified: 1,
+          enabledApps: ['claude'],
+        },
+      ],
+      managedServerNames: { claude: ['secret-server'], codex: [], gemini: [] },
+    })
 
     const validation = validateExport()
     expect(validation.valid).toBe(true)
-    expect(validation.foundFiles).toEqual(['openclaw.json'])
+    expect(validation.foundFiles).toEqual(['codex.json', 'gemini.json', 'mcp.json'])
 
-    const targetDir = path.join(os.tmpdir(), `anyaitools-export-target-${Date.now()}`)
-    const result = exportConfig(targetDir)
-    expect(result.success).toBe(true)
-    expect(result.exportedFiles).toEqual(['openclaw.json'])
-    expect(fs.existsSync(path.join(targetDir, 'openclaw.json'))).toBe(true)
+    const targetDir = path.join(testDir, 'backup-target')
+    const exported = exportConfig(targetDir, 'backup-password')
+    expect(exported.success).toBe(true)
+    expect(exported.backupPath.endsWith('.anyaitools-backup')).toBe(true)
+    expect(exported.exportedFiles).toEqual(['codex.json', 'gemini.json', 'mcp.json'])
+
+    const encryptedContent = fs.readFileSync(exported.backupPath, 'utf-8')
+    expect(encryptedContent).not.toContain('sk-codex-current')
+    expect(encryptedContent).not.toContain('mcp-secret')
+    expect(encryptedContent).not.toContain('env-secret')
+
+    fs.rmSync(anyaitoolsDir, { recursive: true, force: true })
+
+    const importValidation = validateImportSource(exported.backupPath, 'backup-password')
+    expect(importValidation.valid).toBe(true)
+    expect(importValidation.encrypted).toBe(true)
+    expect(importValidation.foundFiles).toEqual(['codex.json', 'gemini.json', 'mcp.json'])
+
+    const imported = importConfig(exported.backupPath, 'backup-password')
+    expect(imported.success).toBe(true)
+    expect(imported.importedFiles).toEqual(['codex.json', 'gemini.json', 'mcp.json'])
+
+    const restoredCodex = JSON.parse(
+      fs.readFileSync(path.join(anyaitoolsDir, 'codex.json'), 'utf-8')
+    )
+    expect(restoredCodex.currentProviderId).toBe('codex-current')
+
+    const restoredMcp = JSON.parse(fs.readFileSync(path.join(anyaitoolsDir, 'mcp.json'), 'utf-8'))
+    expect(restoredMcp.servers[0].args).toContain('mcp-secret')
   })
 
-  it('should allow import when source only contains openclaw.json', () => {
-    const sourceDir = path.join(os.tmpdir(), `anyaitools-import-source-${Date.now()}`)
-    fs.mkdirSync(sourceDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(sourceDir, 'openclaw.json'),
-      JSON.stringify({ currentProviderId: 'x', providers: [{ id: 'x' }], presets: [] }, null, 2),
-      'utf-8'
-    )
+  it('does not import encrypted backups with a wrong password', () => {
+    const anyaitoolsDir = getAnyAIToolsDir()
+    writeJson(path.join(anyaitoolsDir, 'grok.json'), providerConfig('grok-current', 'sk-grok'))
+
+    const exported = exportConfig(path.join(testDir, 'backup-target'), 'correct-password')
+    fs.rmSync(anyaitoolsDir, { recursive: true, force: true })
+
+    const validation = validateImportSource(exported.backupPath, 'wrong-password')
+    expect(validation.valid).toBe(false)
+    expect(validation.message).toContain('解密失败')
+
+    expect(() => importConfig(exported.backupPath, 'wrong-password')).toThrow('解密失败')
+    expect(fs.existsSync(path.join(anyaitoolsDir, 'grok.json'))).toBe(false)
+  })
+
+  it('keeps legacy directory import compatibility for loose json files', () => {
+    const sourceDir = path.join(testDir, 'legacy-source')
+    writeJson(path.join(sourceDir, 'openclaw.json'), providerConfig('openclaw-current'))
 
     const anyaitoolsDir = getAnyAIToolsDir()
-    fs.mkdirSync(anyaitoolsDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(anyaitoolsDir, 'openclaw.json'),
-      JSON.stringify({ currentProviderId: 'legacy', providers: [] }, null, 2),
-      'utf-8'
-    )
+    writeJson(path.join(anyaitoolsDir, 'openclaw.json'), providerConfig('legacy'))
 
     const validation = validateImportDir(sourceDir)
     expect(validation.valid).toBe(true)
+    expect(validation.legacy).toBe(true)
     expect(validation.foundFiles).toEqual(['openclaw.json'])
 
     const result = importConfig(sourceDir)
-    expect(result.success).toBe(true)
     expect(result.importedFiles).toEqual(['openclaw.json'])
-    expect(result.backupPaths.length).toBe(1)
+    expect(result.backupPaths).toHaveLength(1)
 
     const imported = JSON.parse(fs.readFileSync(path.join(anyaitoolsDir, 'openclaw.json'), 'utf-8'))
-    expect(imported.currentProviderId).toBe('x')
+    expect(imported.currentProviderId).toBe('openclaw-current')
   })
 
-  it('should export a standalone Grok provider library', () => {
-    const anyaitoolsDir = getAnyAIToolsDir()
-    fs.mkdirSync(anyaitoolsDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(anyaitoolsDir, 'grok.json'),
-      JSON.stringify({ providers: [], presets: [] }, null, 2),
-      'utf-8'
-    )
+  it('treats legacy json.bak files as importable fallback files', () => {
+    const sourceDir = path.join(testDir, 'legacy-bak-source')
+    writeJson(path.join(sourceDir, 'grok.json.bak'), providerConfig('grok-bak-current'))
 
-    const validation = validateExport()
+    const validation = validateImportSource(sourceDir)
     expect(validation.valid).toBe(true)
+    expect(validation.legacy).toBe(true)
     expect(validation.foundFiles).toEqual(['grok.json'])
 
-    const targetDir = path.join(
-      os.tmpdir(),
-      `anyaitools-grok-export-target-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
-    const result = exportConfig(targetDir)
-    expect(result.exportedFiles).toEqual(['grok.json'])
-    expect(fs.existsSync(path.join(targetDir, 'grok.json'))).toBe(true)
-  })
-
-  it('should import and back up a standalone Grok provider library', () => {
-    const sourceDir = path.join(
-      os.tmpdir(),
-      `anyaitools-grok-import-source-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
-    fs.mkdirSync(sourceDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(sourceDir, 'grok.json'),
-      JSON.stringify({ currentProviderId: 'grok-new', providers: [], presets: [] }, null, 2),
-      'utf-8'
-    )
-
-    const anyaitoolsDir = getAnyAIToolsDir()
-    fs.mkdirSync(anyaitoolsDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(anyaitoolsDir, 'grok.json'),
-      JSON.stringify({ currentProviderId: 'grok-old', providers: [] }, null, 2),
-      'utf-8'
-    )
-
-    expect(validateImportDir(sourceDir).foundFiles).toEqual(['grok.json'])
     const result = importConfig(sourceDir)
     expect(result.importedFiles).toEqual(['grok.json'])
-    expect(result.backupPaths).toHaveLength(1)
-    expect(
-      JSON.parse(fs.readFileSync(path.join(anyaitoolsDir, 'grok.json'), 'utf-8')).currentProviderId
-    ).toBe('grok-new')
+
+    const imported = JSON.parse(
+      fs.readFileSync(path.join(getAnyAIToolsDir(), 'grok.json'), 'utf-8')
+    )
+    expect(imported.currentProviderId).toBe('grok-bak-current')
   })
 })

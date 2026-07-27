@@ -1,41 +1,80 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
+import inquirer from 'inquirer'
 import path from 'path'
-import { importConfig, validateImportDir } from '@anyaitools/core'
+import { importConfig, validateImportSource } from '@anyaitools/core'
 import { promptConfirm } from '../utils/confirm.js'
+
+interface ImportOptions {
+  password?: string
+}
+
+async function resolveImportPassword(options: ImportOptions): Promise<string> {
+  if (options.password?.trim()) {
+    return options.password.trim()
+  }
+
+  const { password } = await inquirer.prompt<{ password: string }>([
+    {
+      type: 'password',
+      name: 'password',
+      message: '输入备份密码',
+      mask: '*',
+      validate: (value: string) => (value.trim() ? true : '请输入备份密码'),
+    },
+  ])
+
+  return password.trim()
+}
 
 export function importCommand(program: Command): void {
   program
-    .command('import <源目录>')
-    .description('从本地目录导入配置（会覆盖当前配置）')
-    .action(async (sourceDir: string) => {
+    .command('import <备份文件或源目录>')
+    .description('从加密备份文件导入配置（兼容旧目录）')
+    .option('--password <password>', '备份密码（不推荐在共享终端历史中使用）')
+    .action(async (sourceDir: string, options: ImportOptions) => {
       try {
         // 解析源路径（支持相对路径和 ~ 符号）
         const resolvedPath = sourceDir.startsWith('~')
           ? path.join(process.env.HOME || '', sourceDir.slice(1))
           : path.resolve(sourceDir)
 
-        // 验证源目录
+        // 验证导入源
         console.log(chalk.bold('\n📥 导入配置\n'))
-        const validation = validateImportDir(resolvedPath)
+        let validation = validateImportSource(resolvedPath)
+        let password: string | undefined
 
         if (!validation.valid) {
           console.log(chalk.red(`❌ ${validation.message}\n`))
           process.exit(1)
         }
 
+        if (validation.requiresPassword) {
+          password = await resolveImportPassword(options)
+          validation = validateImportSource(resolvedPath, password)
+
+          if (!validation.valid) {
+            console.log(chalk.red(`❌ ${validation.message}\n`))
+            process.exit(1)
+          }
+        }
+
         // 显示警告信息
         console.log(chalk.yellow('⚠️  警告：导入将覆盖当前配置\n'))
-        console.log(`源目录: ${chalk.cyan(resolvedPath)}`)
+        console.log(`导入源: ${chalk.cyan(resolvedPath)}`)
         console.log()
         console.log('找到配置文件:')
         for (const file of validation.foundFiles) {
           console.log(`  ${chalk.cyan('✓')} ${file}`)
         }
         console.log()
+        if (validation.legacy) {
+          console.log(chalk.yellow('检测到旧版未加密目录格式'))
+          console.log()
+        }
         console.log(chalk.gray('未找到的受支持文件将自动跳过，不会中断导入'))
         console.log()
-        console.log(chalk.gray('当前配置将被覆盖（自动备份）'))
+        console.log(chalk.gray('备份中包含的当前配置将被覆盖（自动备份）'))
         console.log()
 
         // 第一次确认
@@ -63,7 +102,7 @@ export function importCommand(program: Command): void {
         console.log(chalk.gray('💾 备份当前配置...'))
         console.log(chalk.gray('📥 导入新配置...'))
 
-        const result = importConfig(resolvedPath)
+        const result = importConfig(resolvedPath, password)
 
         // 显示结果
         console.log()

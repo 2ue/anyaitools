@@ -371,13 +371,26 @@ export interface SyncAPI {
 
 export interface ImportExportAPI {
   selectFolder: (title: string) => Promise<string | null>
-  exportConfig: (targetDir: string) => Promise<{ success: boolean; exportedFiles: string[] }>
+  selectImportSource: (title: string) => Promise<string | null>
+  exportConfig: (
+    targetDir: string,
+    password: string
+  ) => Promise<{ success: boolean; backupPath: string; exportedFiles: string[] }>
   importConfig: (
-    sourceDir: string
+    sourcePath: string,
+    password?: string
   ) => Promise<{ success: boolean; backupPaths: string[]; importedFiles: string[] }>
   validateImportDir: (
-    sourceDir: string
-  ) => Promise<{ valid: boolean; message?: string; foundFiles: string[] }>
+    sourcePath: string,
+    password?: string
+  ) => Promise<{
+    valid: boolean
+    message?: string
+    foundFiles: string[]
+    requiresPassword?: boolean
+    encrypted?: boolean
+    legacy?: boolean
+  }>
 }
 
 const syncAPI: SyncAPI = {
@@ -393,9 +406,13 @@ const syncAPI: SyncAPI = {
 
 const importExportAPI: ImportExportAPI = {
   selectFolder: (title) => ipcRenderer.invoke('importexport:select-folder', title),
-  exportConfig: (targetDir) => ipcRenderer.invoke('importexport:export', targetDir),
-  importConfig: (sourceDir) => ipcRenderer.invoke('importexport:import', sourceDir),
-  validateImportDir: (sourceDir) => ipcRenderer.invoke('importexport:validate', sourceDir),
+  selectImportSource: (title) => ipcRenderer.invoke('importexport:select-import-source', title),
+  exportConfig: (targetDir, password) =>
+    ipcRenderer.invoke('importexport:export', targetDir, password),
+  importConfig: (sourcePath, password) =>
+    ipcRenderer.invoke('importexport:import', sourcePath, password),
+  validateImportDir: (sourcePath, password) =>
+    ipcRenderer.invoke('importexport:validate', sourcePath, password),
 }
 
 // ============================================================================

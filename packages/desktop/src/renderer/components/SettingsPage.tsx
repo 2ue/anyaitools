@@ -149,7 +149,11 @@ export default function SettingsPage({ onSuccess, onError, onDataChanged }: Sett
               />
             )}
             {activeSection === 'backup' && (
-              <BackupSection onSuccess={onSuccess} onError={onError} />
+              <BackupSection
+                onSuccess={onSuccess}
+                onError={onError}
+                onDataChanged={onDataChanged}
+              />
             )}
             {activeSection === 'update' && <UpdateSection />}
           </div>

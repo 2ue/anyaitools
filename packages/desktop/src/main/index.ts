@@ -46,7 +46,7 @@ import {
   saveSyncConfig,
   exportConfig,
   importConfig,
-  validateImportDir,
+  validateImportSource,
   analyzeClaudeJson,
   getProjectDetails,
   getCacheDetails,
@@ -80,7 +80,9 @@ let logStream: fs.WriteStream | null = null
 
 function getIconAssetPath(fileName: string) {
   const relativePath = path.join('build', fileName)
-  return isDev ? path.join(__dirname, '../../', relativePath) : path.join(process.resourcesPath, relativePath)
+  return isDev
+    ? path.join(__dirname, '../../', relativePath)
+    : path.join(process.resourcesPath, relativePath)
 }
 
 if (!isDev) {
@@ -1302,12 +1304,35 @@ ipcMain.handle('importexport:select-folder', async (_event, title: string) => {
   }
 })
 
-// 导出配置
-ipcMain.handle('importexport:export', async (_event, targetDir: string) => {
+// 选择导入源（新加密备份文件或旧目录）
+ipcMain.handle('importexport:select-import-source', async (_event, title: string) => {
   try {
-    const result = exportConfig(targetDir)
+    const result = await dialog.showOpenDialog({
+      title,
+      properties: ['openFile', 'openDirectory'],
+      filters: [
+        { name: 'AnyAI Tools 备份', extensions: ['anyaitools-backup', 'json'] },
+        { name: '所有文件', extensions: ['*'] },
+      ],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return result.filePaths[0]
+  } catch (error) {
+    throw new Error(`选择导入源失败：${(error as Error).message}`)
+  }
+})
+
+// 导出配置
+ipcMain.handle('importexport:export', async (_event, targetDir: string, password: string) => {
+  try {
+    const result = exportConfig(targetDir, password)
     return {
       success: result.success,
+      backupPath: result.backupPath,
       exportedFiles: result.exportedFiles,
     }
   } catch (error) {
@@ -1316,9 +1341,9 @@ ipcMain.handle('importexport:export', async (_event, targetDir: string) => {
 })
 
 // 导入配置
-ipcMain.handle('importexport:import', async (_event, sourceDir: string) => {
+ipcMain.handle('importexport:import', async (_event, sourcePath: string, password?: string) => {
   try {
-    const result = importConfig(sourceDir)
+    const result = importConfig(sourcePath, password)
     return {
       success: result.success,
       backupPaths: result.backupPaths,
@@ -1329,17 +1354,20 @@ ipcMain.handle('importexport:import', async (_event, sourceDir: string) => {
   }
 })
 
-// 验证导入目录
-ipcMain.handle('importexport:validate', async (_event, sourceDir: string) => {
+// 验证导入源
+ipcMain.handle('importexport:validate', async (_event, sourcePath: string, password?: string) => {
   try {
-    const result = validateImportDir(sourceDir)
+    const result = validateImportSource(sourcePath, password)
     return {
       valid: result.valid,
       message: result.message,
       foundFiles: result.foundFiles,
+      requiresPassword: result.requiresPassword,
+      encrypted: result.encrypted,
+      legacy: result.legacy,
     }
   } catch (error) {
-    throw new Error(`验证目录失败：${(error as Error).message}`)
+    throw new Error(`验证导入源失败：${(error as Error).message}`)
   }
 })
 

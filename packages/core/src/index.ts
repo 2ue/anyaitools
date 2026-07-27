@@ -124,6 +124,7 @@ export {
   importConfig,
   validateExport,
   validateImportDir,
+  validateImportSource,
   type ExportValidation,
   type ImportValidation,
   type ExportResult,
