@@ -14,7 +14,7 @@ import {
 
 export function addCommand(program: Command): void {
   const command = program.command('add').description('添加新的 Claude Code 服务商')
-  addProviderAddOptions(command)
+  addProviderAddOptions(command, { modelOptions: true })
 
   command.action(async (options: ProviderAddCommandOptions) => {
     try {

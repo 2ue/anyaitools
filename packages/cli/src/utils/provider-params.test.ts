@@ -246,3 +246,27 @@ test('resolveProviderEditInput should update Grok model capabilities', () => {
     supportsBackendSearch: false,
   })
 })
+
+test('resolveProviderAddInput should preserve structured reasoning options', () => {
+  const resolved = resolveProviderAddInput(
+    {
+      name: 'Gemini Reasoning',
+      baseUrl: 'https://api.example.test',
+      apiKey: 'sk-test',
+      model: 'gemini-model',
+      thinkingBudget: 4096,
+      showThinking: true,
+    },
+    []
+  )
+
+  assert.deepEqual(resolved.input?.modelConfig, {
+    modelId: 'gemini-model',
+    source: 'manual',
+    reasoning: {
+      mode: 'budget',
+      value: 4096,
+      visible: true,
+    },
+  })
+})

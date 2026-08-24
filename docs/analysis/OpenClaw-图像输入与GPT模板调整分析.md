@@ -69,9 +69,9 @@
 
 本次判断主要参考 OpenClaw 官方文档：
 
-- AI Providers：<https://docs.openclaw.ai/configuration/ai-providers>
-- Configuration（自定义 provider / 模型列表示例）：<https://docs.openclaw.ai/configuration/configuration>
-- Tools（`media` 工具说明）：<https://docs.openclaw.ai/configuration/tools>
+- AI Providers：<https://docs.openclaw.ai/providers>
+- Configuration（自定义 provider / 模型列表示例）：<https://docs.openclaw.ai/gateway/configuration>
+- Tools（`media` 工具说明）：<https://docs.openclaw.ai/tools>
 
 结合文档，可以确认三点：
 

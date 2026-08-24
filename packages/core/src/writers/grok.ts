@@ -5,9 +5,15 @@ import type { WriteOptions } from '../tool-manager.types.js'
 import { getGrokConfigPath, getGrokDir } from '../paths.js'
 import { createAtomicTempPath, ensureDir, fileExists } from '../utils/file.js'
 import { validateGrokProvider } from '../grok-provider.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+} from '../model-config.js'
 
 interface GrokModelsConfig {
   default?: string
+  default_reasoning_effort?: string
   [key: string]: unknown
 }
 
@@ -20,6 +26,8 @@ interface GrokModelConfig {
   env_key?: string
   api_backend?: ApiBackend
   supports_backend_search?: boolean
+  supports_reasoning_effort?: boolean
+  reasoning_effort?: string
   [key: string]: unknown
 }
 
@@ -64,9 +72,12 @@ function buildManagedModel(
   provider: Provider,
   existingModel: GrokModelConfig | undefined
 ): GrokModelConfig {
+  const selectedModel = resolveProviderModel(provider, provider.model?.trim() || '').trim()
+  const reasoning = resolveProviderReasoning(provider)
+  const parameters = resolveProviderParameters(provider)
   const nextModel: GrokModelConfig = {
     ...(existingModel || {}),
-    model: provider.model!.trim(),
+    model: selectedModel,
     base_url: provider.baseUrl,
     name: provider.name,
     api_backend: resolveApiBackend(provider.apiBackend, existingModel?.api_backend),
@@ -75,6 +86,17 @@ function buildManagedModel(
       (typeof existingModel?.supports_backend_search === 'boolean'
         ? existingModel.supports_backend_search
         : false),
+  }
+
+  if (reasoning?.mode === 'effort' && typeof reasoning.value === 'string') {
+    nextModel.reasoning_effort = reasoning.value
+  } else if (typeof parameters.reasoningEffort === 'string') {
+    nextModel.reasoning_effort = parameters.reasoningEffort
+  }
+  if (typeof parameters.supportsReasoningEffort === 'boolean') {
+    nextModel.supports_reasoning_effort = parameters.supportsReasoningEffort
+  } else if (nextModel.reasoning_effort) {
+    nextModel.supports_reasoning_effort = true
   }
 
   const description = provider.desc?.trim()
@@ -159,12 +181,21 @@ export function writeGrokConfig(provider: Provider, options: WriteOptions = {}):
   if (!provider.baseUrl) {
     const nextModelTable = { ...existingModelTable }
     delete nextModelTable[alias]
+    const parameters = resolveProviderParameters(provider)
+    const reasoning = resolveProviderReasoning(provider)
+    const defaultReasoningEffort =
+      typeof parameters.defaultReasoningEffort === 'string'
+        ? parameters.defaultReasoningEffort
+        : reasoning?.mode === 'effort' && typeof reasoning.value === 'string'
+          ? reasoning.value
+          : undefined
     const nextConfig: GrokConfig = {
       ...existingConfig,
       models: {
         ...existingModels,
-        default: provider.model!.trim(),
-      },
+        default: resolveProviderModel(provider, provider.model?.trim() || '').trim(),
+        ...(defaultReasoningEffort ? { default_reasoning_effort: defaultReasoningEffort } : {}),
+      } as GrokModelsConfig,
     }
     if (Object.keys(nextModelTable).length > 0) {
       nextConfig.model = nextModelTable
@@ -182,13 +213,26 @@ export function writeGrokConfig(provider: Provider, options: WriteOptions = {}):
 
   const nextConfig: GrokConfig = {
     ...existingConfig,
-    models:
-      options.mode === 'overwrite'
-        ? { default: alias }
-        : {
-            ...existingModels,
-            default: alias,
-          },
+    models: (options.mode === 'overwrite'
+      ? {
+          default: alias,
+          ...(typeof resolveProviderParameters(provider).defaultReasoningEffort === 'string'
+            ? {
+                default_reasoning_effort:
+                  resolveProviderParameters(provider).defaultReasoningEffort,
+              }
+            : {}),
+        }
+      : {
+          ...existingModels,
+          default: alias,
+          ...(typeof resolveProviderParameters(provider).defaultReasoningEffort === 'string'
+            ? {
+                default_reasoning_effort:
+                  resolveProviderParameters(provider).defaultReasoningEffort,
+              }
+            : {}),
+        }) as GrokModelsConfig,
     model:
       options.mode === 'overwrite'
         ? { [alias]: managedModel }
@@ -211,7 +255,9 @@ export function removeGrokConfig(provider: Provider, isCurrent = true): void {
 
   const existingConfig = loadExistingConfig(configPath)
   const { models, model } = getConfigTables(existingConfig)
-  const builtinModel = !provider.baseUrl ? provider.model?.trim() : undefined
+  const builtinModel = !provider.baseUrl
+    ? resolveProviderModel(provider, provider.model?.trim() || '').trim()
+    : undefined
   let changed = false
 
   if (provider.id in model && provider.id !== builtinModel) {

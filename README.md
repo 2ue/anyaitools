@@ -5,6 +5,7 @@
 ## ✨ 功能概览
 
 - **一键切换服务商**：Codex / Claude Code / Gemini CLI / OpenCode / OpenClaw / Grok Build
+- **按工具设置模型**：支持目录拉取、手动模型 ID、variant、effort 和 thinking budget
 - **内置预设模板**：提供常用模板（Desktop 支持自定义预设）
 - **安全写入**：关键配置覆盖前自动备份（`.bak`，权限 `600`）
 - **MCP 管理**：集中管理 MCP 服务器（可在 Desktop 选择同步到 Claude/Gemini，Codex 暂不支持）
@@ -21,14 +22,14 @@ aat --help
 
 ## ✅ 支持的工具与配置路径
 
-| 工具            | 主要配置文件                                                          | 说明                                                                                        |
-| --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Codex**       | `~/.codex/config.toml` + `~/.codex/auth.json`                         | `auth.json` 使用 `OPENAI_API_KEY`                                                           |
-| **Claude Code** | `~/.claude/settings.json`                                             | 另有历史文件 `~/.claude.json`                                                               |
-| **Gemini CLI**  | `~/.gemini/settings.json` + `~/.gemini/.env`                          | `.env` 使用 `GOOGLE_GEMINI_BASE_URL` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `GEMINI_MODEL` |
-| **OpenCode**    | `~/.config/opencode/opencode.json`                                    | 写入 `provider` 配置与模型变体                                                              |
-| **Grok Build**  | `$GROK_HOME/config.toml`，默认 `~/.grok/config.toml`                  | xAI 官方 TOML；支持 OAuth、`XAI_API_KEY` 和兼容服务商                                       |
-| **anyaitools**  | `~/.anyaitools/{codex,claude,gemini,opencode,openclaw,grok,mcp}.json` | 保存各工具服务商配置；WebDAV 连接配置存放在 `config.json`                                   |
+| 工具            | 主要配置文件                                                          | 说明                                                                                                  |
+| --------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Codex**       | `~/.codex/config.toml` + `~/.codex/auth.json`                         | `auth.json` 使用 `OPENAI_API_KEY`                                                                     |
+| **Claude Code** | `~/.claude/settings.json`                                             | 另有历史文件 `~/.claude.json`                                                                         |
+| **Gemini CLI**  | `~/.gemini/settings.json` + `~/.gemini/.env`                          | `.env` 使用 `GOOGLE_GEMINI_BASE_URL` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `GEMINI_MODEL`           |
+| **OpenCode**    | `~/.config/opencode/opencode.json`                                    | 写入 `provider` 配置与模型变体                                                                        |
+| **Grok Build**  | `$GROK_HOME/config.toml`，默认 `~/.grok/config.toml`                  | xAI 官方 TOML；支持 OAuth、`XAI_API_KEY` 和兼容服务商                                                 |
+| **anyaitools**  | `~/.anyaitools/{codex,claude,gemini,opencode,openclaw,grok,mcp}.json` | 保存各工具服务商配置；模型 metadata 缓存为 `model-catalogs.json`，WebDAV 连接配置存放在 `config.json` |
 
 ## 📦 内置预设
 
@@ -134,6 +135,11 @@ aat gk add \
 Grok 用户配置位于 `$GROK_HOME/config.toml`，默认是 `~/.grok/config.toml`。企业
 requirements 或环境变量可能覆盖用户配置，因此以 `grok inspect` 显示的最终配置为准。
 详见 [Grok Build 接入指南](docs/grok-build.md)。
+
+各工具的原生模型切换方式、AnyAI Tools 当前支持边界，以及 OpenCode、OpenClaw、
+MCP 等工具的独立配置教程，见 [模型配置与切换指南](docs/模型配置与切换指南.md)、
+[模型推理与思考强度配置](docs/模型推理与思考强度配置.md) 和
+[手动配置教程索引](docs/README.md)。
 
 交互式工具菜单（以 Codex 为例）：
 

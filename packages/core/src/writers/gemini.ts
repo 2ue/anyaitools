@@ -6,6 +6,11 @@ import { ensureDir, fileExists } from '../utils/file.js'
 import type { Provider } from '../tool-manager.js'
 import type { WriteOptions } from '../tool-manager.types.js'
 import { deepMerge } from '../utils/template.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+} from '../model-config.js'
 
 /**
  * Gemini CLI settings.json 顶层结构（宽松定义，保持向后兼容）
@@ -153,6 +158,61 @@ function saveEnvFile(envPath: string, env: Record<string, string>): void {
   fs.renameSync(tempPath, envPath)
 }
 
+function applyGeminiModelConfig(settings: GeminiSettings, provider: Provider): void {
+  const modelId = resolveProviderModel(provider, '')
+  if (modelId) {
+    const currentModel =
+      settings.model && typeof settings.model === 'object' && !Array.isArray(settings.model)
+        ? (settings.model as Record<string, unknown>)
+        : {}
+    settings.model = { ...currentModel, name: modelId }
+  }
+
+  const reasoning = resolveProviderReasoning(provider)
+  const parameters = resolveProviderParameters(provider)
+  const hasThinkingConfig =
+    (reasoning?.mode === 'budget' || reasoning?.mode === 'thinking') &&
+    (typeof reasoning.value === 'number' || reasoning.visible !== undefined)
+  if (hasThinkingConfig) {
+    const existingConfigs =
+      settings.modelConfigs &&
+      typeof settings.modelConfigs === 'object' &&
+      !Array.isArray(settings.modelConfigs)
+        ? (settings.modelConfigs as Record<string, unknown>)
+        : {}
+    const aliases =
+      existingConfigs.customAliases &&
+      typeof existingConfigs.customAliases === 'object' &&
+      !Array.isArray(existingConfigs.customAliases)
+        ? (existingConfigs.customAliases as Record<string, unknown>)
+        : {}
+    settings.modelConfigs = {
+      ...existingConfigs,
+      customAliases: {
+        ...aliases,
+        anyaitools: {
+          modelConfig: {
+            model: modelId,
+            generateContentConfig: {
+              ...(isRecord(parameters.generateContentConfig)
+                ? parameters.generateContentConfig
+                : {}),
+              thinkingConfig: {
+                ...(typeof reasoning.value === 'number' ? { thinkingBudget: reasoning.value } : {}),
+                ...(reasoning.visible === undefined ? {} : { includeThoughts: reasoning.visible }),
+              },
+            },
+          },
+        },
+      },
+    }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /**
  * 将 Provider 应用到 Gemini CLI 的配置（按照官方文档）
  *
@@ -195,6 +255,8 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
       ? ({ ...settingsTemplate } as GeminiSettings)
       : deepMerge<GeminiSettings>(settingsTemplate, userSettings)
 
+  applyGeminiModelConfig(settings, provider)
+
   // 确保启用 IDE 集成
   if (!settings.ide || typeof settings.ide !== 'object') {
     settings.ide = {}
@@ -233,6 +295,10 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
     ...templateEnv,
   }
   const existingGeminiModel = existingEnv.GEMINI_MODEL
+  const selectedModel = resolveProviderModel(provider, '')
+  if (selectedModel) {
+    env.GEMINI_MODEL = selectedModel
+  }
 
   // 模板变量为空时，显式移除对应键
   if (!templateEnv.GOOGLE_GEMINI_BASE_URL) {
@@ -241,7 +307,7 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
   if (!templateEnv.GEMINI_API_KEY) {
     delete env.GEMINI_API_KEY
   }
-  if (options.mode !== 'overwrite' && existingGeminiModel) {
+  if (!selectedModel && options.mode !== 'overwrite' && existingGeminiModel) {
     env.GEMINI_MODEL = existingGeminiModel
   }
 
@@ -255,7 +321,7 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
       }
     } catch {
       // 不是 JSON，当作普通模型名称
-      env.GEMINI_MODEL = provider.model
+      if (!selectedModel) env.GEMINI_MODEL = provider.model
     }
   }
 
@@ -270,7 +336,11 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
       }
     }
     // provider 元数据优先于模板默认值；已有用户自定义模型在非覆盖模式下保留
-    if (modelMeta.defaultModel && (!existingGeminiModel || options.mode === 'overwrite')) {
+    if (
+      modelMeta.defaultModel &&
+      !selectedModel &&
+      (!existingGeminiModel || options.mode === 'overwrite')
+    ) {
       env.GEMINI_MODEL = modelMeta.defaultModel
     }
   }

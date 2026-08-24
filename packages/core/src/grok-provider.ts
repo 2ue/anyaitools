@@ -3,7 +3,11 @@ import type { AddPresetInput, AddProviderInput, ApiBackend } from './tool-manage
 const API_BACKENDS: ApiBackend[] = ['chat_completions', 'responses', 'messages']
 
 export function validateGrokProvider(provider: AddProviderInput): void {
-  if (typeof provider.model !== 'string' || !provider.model.trim()) {
+  const configuredModel =
+    typeof provider.modelConfig?.modelId === 'string' && provider.modelConfig.modelId.trim()
+      ? provider.modelConfig.modelId
+      : provider.model
+  if (typeof configuredModel !== 'string' || !configuredModel.trim()) {
     throw new Error('Grok 模型不能为空')
   }
   if (typeof provider.baseUrl !== 'string') {
@@ -43,6 +47,7 @@ export function validateGrokPreset(preset: AddPresetInput): void {
     baseUrl: preset.baseUrl,
     apiKey: '',
     model: preset.model,
+    modelConfig: preset.modelConfig,
     apiBackend: preset.apiBackend,
     supportsBackendSearch: preset.supportsBackendSearch,
   })

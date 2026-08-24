@@ -111,6 +111,8 @@ export interface Provider {
   apiKey: string
   /** 模型名称(可选) */
   model?: string
+  /** 按工具保存的结构化模型配置（兼容旧版 model 字段） */
+  modelConfig?: ToolModelConfig
   /** API 协议后端(可选,用于 Grok CLI 等支持多协议的工具) */
   apiBackend?: ApiBackend
   /** 是否支持服务端搜索(可选) */
@@ -134,6 +136,8 @@ export interface PresetTemplate {
   isBuiltIn: boolean
   /** 默认模型名称(可选) */
   model?: string
+  /** 默认结构化模型配置（可选） */
+  modelConfig?: ToolModelConfig
   /** 默认 API 协议后端(可选) */
   apiBackend?: ApiBackend
   /** 是否支持服务端搜索(可选) */
@@ -146,6 +150,7 @@ export interface AddProviderInput {
   baseUrl: string
   apiKey: string
   model?: string
+  modelConfig?: ToolModelConfig
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }
@@ -156,6 +161,7 @@ export interface EditProviderInput {
   baseUrl?: string
   apiKey?: string
   model?: string
+  modelConfig?: ToolModelConfig
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }
@@ -165,6 +171,7 @@ export interface AddPresetInput {
   baseUrl: string
   description: string
   model?: string
+  modelConfig?: ToolModelConfig
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }
@@ -174,8 +181,75 @@ export interface EditPresetInput {
   baseUrl?: string
   description?: string
   model?: string
+  modelConfig?: ToolModelConfig
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
+}
+
+export type ModelToolType = Exclude<ToolType, 'mcp'>
+
+export type ModelCatalogSource =
+  | 'official'
+  | 'provider-api'
+  | 'models-dev'
+  | 'openclaw-cli'
+  | 'cached'
+  | 'manual'
+
+export type ModelReasoningMode = 'effort' | 'thinking' | 'budget' | 'variant' | 'unsupported'
+
+export interface ModelReasoningConfig {
+  mode: ModelReasoningMode
+  value?: string | number
+  visible?: boolean
+  supportedValues?: Array<string | number>
+}
+
+export interface ToolModelConfig {
+  /** 实际模型 ID；OpenCode/OpenClaw 通常为 provider/model-id */
+  modelId?: string
+  /** 展示名称 */
+  displayName?: string
+  /** 模型目录或手动输入来源 */
+  source?: ModelCatalogSource
+  /** OpenCode 等工具的 variant */
+  variant?: string
+  /** 工具相关的推理/思考配置 */
+  reasoning?: ModelReasoningConfig
+  /** 工具特有的模型参数（如 Gemini thinkingBudget） */
+  parameters?: Record<string, unknown>
+  /** 能力和原始 provider 元数据 */
+  capabilities?: Record<string, unknown>
+  /** 保留无法标准化的官方字段 */
+  raw?: Record<string, unknown>
+}
+
+export interface ModelCatalogEntry {
+  id: string
+  name?: string
+  providerId?: string
+  source: ModelCatalogSource
+  reasoning?: {
+    mode: ModelReasoningMode
+    supportedValues?: Array<string | number>
+  }
+  variants?: string[]
+  capabilities?: Record<string, unknown>
+}
+
+export interface ModelCatalog {
+  tool: ModelToolType
+  providerId?: string
+  source: ModelCatalogSource
+  fetchedAt: number
+  models: ModelCatalogEntry[]
+  warnings?: string[]
+}
+
+export interface ModelCatalogRequest {
+  tool: ModelToolType
+  provider: Pick<Provider, 'id' | 'name' | 'baseUrl' | 'apiKey' | 'model' | 'modelConfig'>
+  refresh?: boolean
 }
 
 // ---------------------------------------------------------------------------

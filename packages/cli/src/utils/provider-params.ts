@@ -11,6 +11,10 @@ export interface ProviderAddCommandOptions {
   baseUrl?: string
   apiKey?: string
   model?: string
+  reasoningEffort?: string
+  modelVariant?: string
+  thinkingBudget?: number
+  showThinking?: boolean
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
   switch?: boolean
@@ -23,6 +27,10 @@ export interface ProviderEditCommandOptions {
   baseUrl?: string
   apiKey?: string
   model?: string
+  reasoningEffort?: string
+  modelVariant?: string
+  thinkingBudget?: number
+  showThinking?: boolean
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }
@@ -42,6 +50,7 @@ export interface ProviderInputRules {
 
 export interface ProviderOptionCapabilities {
   modelConfig?: boolean
+  modelOptions?: boolean
 }
 
 interface ProviderPresetLike {
@@ -120,9 +129,22 @@ function resolvePreset(
   return preset
 }
 
-function addModelConfigOptions(command: Command, edit = false): void {
+function addModelOptions(command: Command, edit = false): void {
   command
     .option(`--model <model>`, edit ? '新的模型 ID' : '模型 ID')
+    .option('--reasoning-effort <value>', edit ? '新的推理强度' : '推理强度')
+    .option('--model-variant <variant>', edit ? '新的模型 variant' : '模型 variant')
+    .option(
+      '--thinking-budget <tokens>',
+      edit ? '新的思考 token 预算' : '思考 token 预算',
+      (value) => Number(value)
+    )
+    .option('--show-thinking', '显示思考内容或 thinking blocks')
+}
+
+function addModelConfigOptions(command: Command, edit = false): void {
+  addModelOptions(command, edit)
+  command
     .option(
       '--api-backend <backend>',
       edit
@@ -146,6 +168,8 @@ export function addProviderAddOptions(
 
   if (capabilities.modelConfig) {
     addModelConfigOptions(command)
+  } else if (capabilities.modelOptions) {
+    addModelOptions(command)
   }
 
   command.option('--switch', '添加后立即切换').option('--skip-switch', '添加后不切换')
@@ -163,6 +187,8 @@ export function addProviderEditOptions(
 
   if (capabilities.modelConfig) {
     addModelConfigOptions(command, true)
+  } else if (capabilities.modelOptions) {
+    addModelOptions(command, true)
   }
 }
 
@@ -186,6 +212,10 @@ export function resolveProviderAddInput(
     options.baseUrl !== undefined ||
     options.apiKey !== undefined ||
     options.model !== undefined ||
+    options.reasoningEffort !== undefined ||
+    options.modelVariant !== undefined ||
+    options.thinkingBudget !== undefined ||
+    options.showThinking !== undefined ||
     options.apiBackend !== undefined ||
     options.supportsBackendSearch !== undefined ||
     options.switch === true ||
@@ -204,6 +234,9 @@ export function resolveProviderAddInput(
   const baseUrl = trimCliValue(options.baseUrl) ?? preset?.baseUrl ?? ''
   const apiKey = options.apiKey === undefined ? '' : options.apiKey.trim()
   const model = trimCliValue(options.model) ?? trimCliValue(preset?.model)
+  const reasoningEffort = trimCliValue(options.reasoningEffort)
+  const modelVariant = trimCliValue(options.modelVariant)
+  const thinkingBudget = options.thinkingBudget
   const apiBackend = options.apiBackend ?? preset?.apiBackend ?? rules.defaultApiBackend
   const supportsBackendSearch =
     options.supportsBackendSearch ??
@@ -221,6 +254,9 @@ export function resolveProviderAddInput(
   validateBaseUrl(baseUrl, allowEmptyBaseUrl)
   validateApiKey(apiKey, rules.allowEmptyApiKey)
   validateModel(model, rules.requireModel)
+  if (thinkingBudget !== undefined && (!Number.isFinite(thinkingBudget) || thinkingBudget < 0)) {
+    throw new Error('--thinking-budget 必须是非负数字')
+  }
   validateApiBackend(apiBackend)
 
   return {
@@ -232,6 +268,40 @@ export function resolveProviderAddInput(
       baseUrl,
       apiKey,
       ...(model !== undefined ? { model } : {}),
+      ...(reasoningEffort ||
+      modelVariant ||
+      thinkingBudget !== undefined ||
+      options.showThinking !== undefined
+        ? {
+            modelConfig: {
+              ...(model ? { modelId: model } : {}),
+              source: 'manual' as const,
+              ...(modelVariant ? { variant: modelVariant } : {}),
+              ...(reasoningEffort ||
+              thinkingBudget !== undefined ||
+              options.showThinking !== undefined
+                ? {
+                    reasoning: {
+                      mode:
+                        thinkingBudget !== undefined
+                          ? 'budget'
+                          : modelVariant
+                            ? 'variant'
+                            : 'effort',
+                      ...(thinkingBudget !== undefined
+                        ? { value: thinkingBudget }
+                        : reasoningEffort
+                          ? { value: reasoningEffort }
+                          : {}),
+                      ...(options.showThinking !== undefined
+                        ? { visible: options.showThinking }
+                        : {}),
+                    },
+                  }
+                : {}),
+            },
+          }
+        : {}),
       ...(apiBackend !== undefined ? { apiBackend } : {}),
       ...(supportsBackendSearch !== undefined ? { supportsBackendSearch } : {}),
     },
@@ -248,6 +318,10 @@ export function resolveProviderEditInput(
     options.baseUrl !== undefined ||
     options.apiKey !== undefined ||
     options.model !== undefined ||
+    options.reasoningEffort !== undefined ||
+    options.modelVariant !== undefined ||
+    options.thinkingBudget !== undefined ||
+    options.showThinking !== undefined ||
     options.apiBackend !== undefined ||
     options.supportsBackendSearch !== undefined
 
@@ -281,6 +355,32 @@ export function resolveProviderEditInput(
     const model = options.model.trim()
     validateModel(model, true)
     updates.model = model
+  }
+
+  if (
+    options.reasoningEffort !== undefined ||
+    options.modelVariant !== undefined ||
+    options.thinkingBudget !== undefined ||
+    options.showThinking !== undefined
+  ) {
+    const thinkingBudget = options.thinkingBudget
+    if (thinkingBudget !== undefined && (!Number.isFinite(thinkingBudget) || thinkingBudget < 0)) {
+      throw new Error('--thinking-budget 必须是非负数字')
+    }
+    updates.modelConfig = {
+      ...(options.model ? { modelId: options.model.trim() } : {}),
+      source: 'manual',
+      ...(options.modelVariant ? { variant: options.modelVariant.trim() } : {}),
+      reasoning: {
+        mode: thinkingBudget !== undefined ? 'budget' : options.modelVariant ? 'variant' : 'effort',
+        ...(thinkingBudget !== undefined
+          ? { value: thinkingBudget }
+          : options.reasoningEffort
+            ? { value: options.reasoningEffort.trim() }
+            : {}),
+        ...(options.showThinking !== undefined ? { visible: options.showThinking } : {}),
+      },
+    }
   }
 
   if (options.apiBackend !== undefined) {

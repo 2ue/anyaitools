@@ -6,6 +6,12 @@ import type { WriteOptions } from '../tool-manager.types.js'
 import { getOpenCodeConfigPath, getOpenCodeDir } from '../paths.js'
 import { ensureDir, fileExists, readJSON, writeJSON } from '../utils/file.js'
 import { replaceVariables, deepMerge } from '../utils/template.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+  resolveProviderVariant,
+} from '../model-config.js'
 
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json'
 const OPENCODE_PROVIDER_KEY = 'openai'
@@ -36,6 +42,10 @@ interface OpenCodeConfig {
 interface OpenCodeProviderMeta {
   npm?: string // legacy: previous versions stored npm package in Provider.model
   models?: Record<string, unknown>
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 // ESM 环境下获取当前文件所在目录
@@ -149,7 +159,12 @@ function enforceAgentStoreFalse(agent: unknown): Record<string, unknown> {
 
 function enforceModelStoreFalse(
   models: unknown,
-  options: { removeDeprecatedManaged?: boolean } = {}
+  options: {
+    removeDeprecatedManaged?: boolean
+    selectedModelKey?: string
+    selectedVariant?: string
+    reasoningEffort?: string
+  } = {}
 ): Record<string, unknown> {
   const base = models && typeof models === 'object' && !Array.isArray(models) ? (models as any) : {}
   const mergedModels = deepMerge<Record<string, unknown>>(DEFAULT_MODELS, base)
@@ -157,6 +172,25 @@ function enforceModelStoreFalse(
   if (options.removeDeprecatedManaged !== false) {
     for (const key of DEPRECATED_MANAGED_MODEL_KEYS) {
       delete mergedModels[key]
+    }
+  }
+
+  const selectedModelKey = options.selectedModelKey || OPENCODE_MODEL_KEY
+  const selectedModel = isRecord(mergedModels[selectedModelKey])
+    ? (mergedModels[selectedModelKey] as Record<string, unknown>)
+    : {}
+  const selectedVariants = isRecord(selectedModel.variants)
+    ? (selectedModel.variants as Record<string, unknown>)
+    : {}
+  const variantName = options.selectedVariant || options.reasoningEffort
+  const nextVariants = { ...selectedVariants }
+  if (variantName) {
+    const existingVariant = isRecord(nextVariants[variantName])
+      ? (nextVariants[variantName] as Record<string, unknown>)
+      : {}
+    nextVariants[variantName] = {
+      ...existingVariant,
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
     }
   }
 
@@ -172,7 +206,25 @@ function enforceModelStoreFalse(
         xhigh: {},
       },
     },
+    [selectedModelKey]: {
+      ...selectedModel,
+      options: {
+        ...(isRecord(selectedModel.options) ? selectedModel.options : {}),
+        store: false,
+      },
+      variants: nextVariants,
+    },
   })
+}
+
+function resolveOpenCodeModel(provider: Provider): { reference: string; modelKey: string } {
+  const configured = resolveProviderModel(provider, OPENCODE_MODEL).trim()
+  const reference = configured.includes('/') ? configured : `${OPENCODE_PROVIDER_KEY}/${configured}`
+  const modelKey = reference.slice(reference.lastIndexOf('/') + 1).replace(/#.*$/, '')
+  return {
+    reference,
+    modelKey: modelKey || OPENCODE_MODEL_KEY,
+  }
 }
 
 /**
@@ -196,6 +248,18 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
         : {}
 
   const meta = parseProviderMeta(provider.model)
+  const selected = resolveOpenCodeModel(provider)
+  const reasoning = resolveProviderReasoning(provider)
+  const parameters = resolveProviderParameters(provider)
+  const selectedVariant =
+    resolveProviderVariant(provider) ||
+    (reasoning?.mode === 'variant' && typeof reasoning.value === 'string'
+      ? reasoning.value
+      : undefined)
+  const reasoningEffort =
+    reasoning?.mode === 'effort' && typeof reasoning.value === 'string'
+      ? reasoning.value
+      : undefined
 
   // 1) 生成默认配置（来自模板文件）
   const template = loadOpenCodeTemplateConfig()
@@ -216,7 +280,12 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
 
   const models = enforceModelStoreFalse(
     meta?.models || existingProvider?.models || templateProvider?.models || DEFAULT_MODELS,
-    { removeDeprecatedManaged: !meta?.models }
+    {
+      removeDeprecatedManaged: !meta?.models,
+      selectedModelKey: selected.modelKey,
+      selectedVariant,
+      reasoningEffort,
+    }
   )
 
   const providerConfig: OpenCodeProvider = deepMerge<OpenCodeProvider>(templateProvider || {}, {
@@ -241,12 +310,37 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
   const nextConfig: OpenCodeConfig = {
     ...mergedConfig,
     $schema: OPENCODE_SCHEMA,
-    model: OPENCODE_MODEL,
+    model: selected.reference,
     agent: enforceAgentStoreFalse(mergedConfig.agent),
     provider: {
       ...existingProviders,
       [OPENCODE_PROVIDER_KEY]: providerConfig,
     },
+  }
+
+  const selectedModelWithVariant =
+    selectedVariant && selected.reference ? `${selected.reference}#${selectedVariant}` : undefined
+  if (selectedModelWithVariant) {
+    const agents = nextConfig.agent || {}
+    for (const agentName of ['build', 'plan']) {
+      const agent = isRecord(agents[agentName]) ? { ...(agents[agentName] as any) } : {}
+      const existingOptions = isRecord(agent.options) ? agent.options : {}
+      agent.model = selectedModelWithVariant
+      agent.options = existingOptions
+      agents[agentName] = agent
+    }
+    nextConfig.agent = agents
+  }
+
+  if (typeof parameters.modelVariant === 'string' && parameters.modelVariant.trim()) {
+    const variant = parameters.modelVariant.trim()
+    const agents = nextConfig.agent || {}
+    for (const agentName of ['build', 'plan']) {
+      const agent = isRecord(agents[agentName]) ? { ...(agents[agentName] as any) } : {}
+      agent.model = `${selected.reference}#${variant}`
+      agents[agentName] = agent
+    }
+    nextConfig.agent = agents
   }
 
   writeJSON(configPath, nextConfig)

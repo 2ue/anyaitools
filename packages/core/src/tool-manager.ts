@@ -51,6 +51,7 @@ import type {
   EditProviderInput,
   AddPresetInput,
   EditPresetInput,
+  ToolModelConfig,
   ToolManager,
 } from './tool-manager.types.js'
 import {
@@ -71,6 +72,7 @@ export type {
   EditProviderInput,
   AddPresetInput,
   EditPresetInput,
+  ToolModelConfig,
   ToolManager,
 }
 export { ProviderNotFoundError, ProviderNameConflictError, PresetNameConflictError }
@@ -246,6 +248,7 @@ function createToolManager(tool: ToolType): ToolManager {
       baseUrl: input.baseUrl.trim(),
       apiKey: input.apiKey.trim(),
       model: trimInput(input.model),
+      modelConfig: input.modelConfig,
     }
   }
 
@@ -257,6 +260,7 @@ function createToolManager(tool: ToolType): ToolManager {
       baseUrl: trimInput(updates.baseUrl),
       apiKey: trimInput(updates.apiKey),
       model: trimInput(updates.model),
+      modelConfig: updates.modelConfig,
     }
   }
 
@@ -285,6 +289,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: normalizedInput.baseUrl,
         apiKey: normalizedInput.apiKey,
         model: normalizedInput.model,
+        modelConfig: normalizedInput.modelConfig,
         apiBackend: normalizedInput.apiBackend,
         supportsBackendSearch: normalizedInput.supportsBackendSearch,
         createdAt: timestamp,
@@ -377,6 +382,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: normalizedUpdates.baseUrl ?? provider.baseUrl,
         apiKey: normalizedUpdates.apiKey ?? provider.apiKey,
         model: normalizedUpdates.model ?? provider.model,
+        modelConfig: normalizedUpdates.modelConfig ?? provider.modelConfig,
         apiBackend: normalizedUpdates.apiBackend ?? provider.apiBackend,
         supportsBackendSearch:
           normalizedUpdates.supportsBackendSearch ?? provider.supportsBackendSearch,
@@ -398,6 +404,8 @@ function createToolManager(tool: ToolType): ToolManager {
       if (normalizedUpdates.baseUrl !== undefined) provider.baseUrl = normalizedUpdates.baseUrl
       if (normalizedUpdates.apiKey !== undefined) provider.apiKey = normalizedUpdates.apiKey
       if (normalizedUpdates.model !== undefined) provider.model = normalizedUpdates.model
+      if (normalizedUpdates.modelConfig !== undefined)
+        provider.modelConfig = normalizedUpdates.modelConfig
       if (normalizedUpdates.apiBackend !== undefined)
         provider.apiBackend = normalizedUpdates.apiBackend
       if (normalizedUpdates.supportsBackendSearch !== undefined)
@@ -495,6 +503,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: input.baseUrl.trim(),
         description: input.description.trim(),
         model: trimInput(input.model),
+        modelConfig: input.modelConfig,
       }
 
       if (!normalizedInput.name) {
@@ -519,6 +528,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: normalizedInput.baseUrl,
         description: normalizedInput.description,
         model: normalizedInput.model,
+        modelConfig: normalizedInput.modelConfig,
         apiBackend: normalizedInput.apiBackend,
         supportsBackendSearch: normalizedInput.supportsBackendSearch,
       }
@@ -561,6 +571,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: trimInput(updates.baseUrl),
         description: trimInput(updates.description),
         model: trimInput(updates.model),
+        modelConfig: updates.modelConfig,
       }
 
       if (!config.presets) {
@@ -582,6 +593,7 @@ function createToolManager(tool: ToolType): ToolManager {
         baseUrl: normalizedUpdates.baseUrl ?? preset.baseUrl,
         description: normalizedUpdates.description ?? preset.description,
         model: normalizedUpdates.model ?? preset.model,
+        modelConfig: normalizedUpdates.modelConfig ?? preset.modelConfig,
         apiBackend: normalizedUpdates.apiBackend ?? preset.apiBackend,
         supportsBackendSearch:
           normalizedUpdates.supportsBackendSearch ?? preset.supportsBackendSearch,
@@ -603,6 +615,8 @@ function createToolManager(tool: ToolType): ToolManager {
       if (normalizedUpdates.description !== undefined)
         preset.description = normalizedUpdates.description
       if (normalizedUpdates.model !== undefined) preset.model = normalizedUpdates.model
+      if (normalizedUpdates.modelConfig !== undefined)
+        preset.modelConfig = normalizedUpdates.modelConfig
       if (normalizedUpdates.apiBackend !== undefined)
         preset.apiBackend = normalizedUpdates.apiBackend
       if (normalizedUpdates.supportsBackendSearch !== undefined)

@@ -93,7 +93,7 @@ requires_openai_auth = true
 | `model_provider`             | 当前使用的服务商名称（必须与 `[model_providers.xxx]` 中的名称一致） | ✅ 必填             |
 | `model`                      | 使用的模型名称（如 `gpt-5.5`）                                      | ✅ 必填             |
 | `model_reasoning_effort`     | 模型推理强度（可选，建议保留）                                      | ❌ 可选             |
-| `review_model`               | `/review` 使用的模型（可选，默认跟随当前模型）                      | ❌ 可选             |
+| `review_model`               | `/review` 使用的独立模型（可选）                                    | ❌ 可选             |
 | `plan_mode_reasoning_effort` | Plan 模式推理强度（可选）                                           | ❌ 可选             |
 | `model_reasoning_summary`    | 推理摘要展示策略（如 `auto`）                                       | ❌ 可选             |
 | `model_verbosity`            | GPT-5 输出详细程度（如 `high`）                                     | ❌ 可选             |
@@ -137,6 +137,45 @@ notepad $env:USERPROFILE\.codex\auth.json
 ```bash
 codex --version
 ```
+
+## 切换模型
+
+### 原生方式
+
+修改 `~/.codex/config.toml` 的根级 `model`：
+
+```toml
+model_provider = "serverA"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
+```
+
+只想本次启动临时切换时，使用命令行参数：
+
+```bash
+codex --model gpt-5.5
+```
+
+`model_provider` 决定服务商，`model` 决定该服务商下使用的模型。两者都要和
+`[model_providers.<name>]` 对应。`review_model` 是 `/review` 的独立模型；
+`model_reasoning_effort` 和 `plan_mode_reasoning_effort` 只是推理强度，不是模型。
+
+### 使用 AnyAI Tools
+
+```bash
+aat cx add
+aat cx use <服务商ID>
+aat cx current
+```
+
+AnyAI Tools 核心 writer 支持 `provider.model` 写入根级 `model`，但当前 Desktop
+通用表单和 CLI 的 Codex 添加/编辑命令没有单独的模型输入项。因此最稳妥的做法是：
+
+1. 先在 `config.toml` 手动设置 `model`（必要时同时设置 `review_model`）。
+2. 再用 `aat cx use` 切换服务商和 API Key。
+3. 切换后检查 `config.toml`，确认命令行参数或项目配置没有覆盖它。
+
+`aat cx current` 只能确认 AnyAI Tools 当前服务商，不代表最终模型一定是该值。
 
 ---
 
@@ -433,6 +472,9 @@ anyaitools 会自动：
 - 解析并增量更新 `config.toml`，保留其他 provider 和合法自定义字段
 - 自动删除 Codex 已废弃的旧键；配置无法解析时中止，不覆盖原文件
 - 更新 `auth.json` 的 `OPENAI_API_KEY`，保留其他字段
+
+如果通过代码或高级 API 传入 `provider.model`，writer 会把它作为根级 `model`
+写入；普通 CLI/桌面表单目前没有暴露该字段。
 
 Desktop 的 Codex 页面提供“保护 `model_provider`”开关，默认关闭。开启后，普通切换若发现 `config.toml` 已有非空的顶层 `model_provider`，会保留该名称，并用切换目标更新同名 `model_providers` 配置块；没有现有名称时仍使用目标服务商名称初始化。
 

@@ -9,6 +9,11 @@ import { OKMCODE_ROOT_URL } from '../presets/okmcode.js'
 import { getCodexSettings } from '../codex-settings.js'
 import { ensureDir, fileExists, readJSON, writeJSON } from '../utils/file.js'
 import { deepMerge } from '../utils/template.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+} from '../model-config.js'
 
 /**
  * Codex config.toml 结构
@@ -198,6 +203,29 @@ const CONFLICTING_PROVIDER_AUTH_KEYS = [
   'aws',
 ] as const
 
+function applyCodexModelConfig(config: CodexConfig, provider: Provider): void {
+  config.model = resolveProviderModel(provider, config.model || 'gpt-5.5')
+
+  const reasoning = resolveProviderReasoning(provider)
+  if (reasoning?.mode === 'effort' && typeof reasoning.value === 'string') {
+    config.model_reasoning_effort = reasoning.value
+  }
+
+  const parameters = resolveProviderParameters(provider)
+  if (typeof parameters.planModeReasoningEffort === 'string') {
+    config.plan_mode_reasoning_effort = parameters.planModeReasoningEffort
+  }
+  if (typeof parameters.reviewModel === 'string' && parameters.reviewModel.trim()) {
+    config.review_model = parameters.reviewModel.trim()
+  }
+  if (typeof parameters.modelReasoningSummary === 'string') {
+    config.model_reasoning_summary = parameters.modelReasoningSummary
+  }
+  if (typeof parameters.modelVerbosity === 'string') {
+    config.model_verbosity = parameters.modelVerbosity
+  }
+}
+
 function resolveCodexProviderKey(provider: Provider): string {
   try {
     const hostname = new URL(provider.baseUrl).hostname.toLowerCase()
@@ -321,7 +349,7 @@ function writeCodexConfigOverwrite(provider: Provider): void {
 
   const providerKey = resolveCodexProviderKey(provider)
   nextConfig.model_provider = providerKey
-  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.5'
+  applyCodexModelConfig(nextConfig, provider)
   nextConfig.model_providers = {
     [providerKey]: buildManagedProvider(provider, providerKey),
   }
@@ -357,7 +385,7 @@ function writeCodexConfigMerge(provider: Provider): void {
   removeDeprecatedKeys(nextConfig)
 
   nextConfig.model_provider = providerKey
-  nextConfig.model = provider.model || nextConfig.model || 'gpt-5.5'
+  applyCodexModelConfig(nextConfig, provider)
 
   const existingProviders =
     nextConfig.model_providers &&

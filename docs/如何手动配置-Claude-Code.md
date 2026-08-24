@@ -77,14 +77,14 @@ code ~/.claude/settings.json
 
 **关键配置项说明**：
 
-| 字段                                       | 说明                                                               | 必填                |
-| ------------------------------------------ | ------------------------------------------------------------------ | ------------------- |
-| `ANTHROPIC_AUTH_TOKEN`                     | API 认证令牌，由服务商提供（格式通常为 `sk-ant-xxx`）              | ✅ 必填             |
-| `ANTHROPIC_BASE_URL`                       | API 基础地址，由服务商提供                                         | ✅ 必填             |
-| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | 禁用非必要流量（可选，建议保留）                                   | ❌ 可选             |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS`            | 最大输出令牌数（可选，建议保留）                                   | ❌ 可选             |
-| `model`                                    | Claude Code 模型选择。`sonnet` 是官方动态别名，会解析到最新 Sonnet | ❌ 可选（模板保留） |
-| `alwaysThinkingEnabled`                    | 默认启用 extended thinking                                         | ❌ 可选（模板保留） |
+| 字段                                       | 说明                                                           | 必填                |
+| ------------------------------------------ | -------------------------------------------------------------- | ------------------- |
+| `ANTHROPIC_AUTH_TOKEN`                     | API 认证令牌，由服务商提供（格式通常为 `sk-ant-xxx`）          | ✅ 必填             |
+| `ANTHROPIC_BASE_URL`                       | API 基础地址，由服务商提供                                     | ✅ 必填             |
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | 禁用非必要流量（可选，建议保留）                               | ❌ 可选             |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS`            | 最大输出令牌数（可选，建议保留）                               | ❌ 可选             |
+| `model`                                    | 启动时的初始模型。`sonnet` 是官方动态别名，会解析到当前 Sonnet | ❌ 可选（模板保留） |
+| `alwaysThinkingEnabled`                    | 默认启用 extended thinking                                     | ❌ 可选（模板保留） |
 
 ### 第 4 步：验证配置
 
@@ -93,6 +93,42 @@ code ~/.claude/settings.json
 ```bash
 claude --version
 ```
+
+## 切换模型
+
+### 原生方式
+
+启动时指定模型：
+
+```bash
+claude --model sonnet
+claude --model claude-sonnet-4-20250514
+```
+
+进入会话后使用：
+
+```text
+/model
+```
+
+`sonnet`、`opus`、`haiku` 是动态别名，`opusplan` 是“计划用 Opus、执行用 Sonnet”
+的特殊模式。如果要限制用户可选模型，可在 `settings.json` 中设置
+`availableModels`；需要连默认值也受限时，再设置 `enforceAvailableModels`。
+
+### 使用 AnyAI Tools
+
+```bash
+aat cc add
+aat cc use <服务商ID>
+aat cc current
+```
+
+AnyAI Tools 当前主要切换 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`。
+常规合并会保留已有 `model`；新文件和覆盖模式使用模板默认的 `sonnet`。
+Desktop 和 CLI 目前没有 Claude 模型字段，因此 `aat cc use` 不是具体模型切换。
+
+需要固定模型时，建议先用 AnyAI Tools 切换服务商，再用 `claude --model` 或会话内
+`/model` 选择模型。修改 `settings.json` 后请重新启动 Claude Code。
 
 ---
 

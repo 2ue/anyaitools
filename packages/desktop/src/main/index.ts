@@ -63,6 +63,8 @@ import {
   getMCPConfigPath,
   getCodexSettings,
   setCodexPreserveProviderName,
+  fetchModelCatalog,
+  clearModelCatalogCache,
 } from '@anyaitools/core'
 import type {
   AddProviderInput,
@@ -72,6 +74,7 @@ import type {
   SyncConfig,
   AppType,
 } from '@anyaitools/core'
+import type { ModelCatalogRequest, ModelToolType } from '@anyaitools/types'
 
 // 设置日志文件（生产模式）
 const isDev = process.env.NODE_ENV === 'development'
@@ -824,6 +827,31 @@ ipcMain.handle('claude:edit-preset', async (_event, name: string, updates: EditP
 ipcMain.handle('claude:remove-preset', async (_event, name: string) => {
   const manager = createClaudeManager()
   return manager.removePreset(name)
+})
+
+// ============================================================================
+// IPC 处理器 - 模型目录（MCP 不属于模型目录）
+// ============================================================================
+
+const MODEL_TOOLS = new Set<ModelToolType>([
+  'codex',
+  'claude',
+  'gemini',
+  'opencode',
+  'openclaw',
+  'grok',
+])
+
+ipcMain.handle('models:fetch-catalog', async (_event, request: ModelCatalogRequest) => {
+  if (!request || !MODEL_TOOLS.has(request.tool)) {
+    throw new Error('不支持的模型工具；MCP 不提供模型目录')
+  }
+  return fetchModelCatalog(request)
+})
+
+ipcMain.handle('models:clear-catalog-cache', async (_event, providerId?: string) => {
+  clearModelCatalogCache(providerId)
+  return { success: true }
 })
 
 // ============================================================================

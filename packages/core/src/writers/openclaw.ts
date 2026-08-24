@@ -6,6 +6,11 @@ import type { WriteOptions } from '../tool-manager.types.js'
 import { getOpenClawConfigPath, getOpenClawDir, getOpenClawModelsPath } from '../paths.js'
 import { ensureDir, fileExists, readJSON, writeJSON } from '../utils/file.js'
 import { deepMerge, replaceVariables } from '../utils/template.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+} from '../model-config.js'
 
 interface OpenClawModelsFile {
   providers?: Record<string, unknown>
@@ -163,33 +168,159 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function forcePrimaryModelReasoning(models: unknown): unknown {
+function applyManagedModelEntry(
+  models: unknown,
+  modelId: string,
+  reasoning: ReturnType<typeof resolveProviderReasoning>,
+  parameters: Record<string, unknown>
+): unknown {
   if (!Array.isArray(models)) return models
 
-  return models.map((item) => {
+  let found = false
+  const nextModels = models.map((item) => {
     if (!isRecord(item)) return item
 
-    const modelId = typeof item.id === 'string' ? item.id : ''
-    const modelName = typeof item.name === 'string' ? item.name : ''
-    if (modelId !== PRIMARY_MODEL_ID && modelName !== PRIMARY_MODEL_ID) {
+    const existingId = typeof item.id === 'string' ? item.id : ''
+    const existingName = typeof item.name === 'string' ? item.name : ''
+    if (existingId !== modelId && existingName !== modelId) {
       return item
     }
 
+    found = true
+    const supportedReasoningEfforts = Array.isArray(parameters.supportedReasoningEfforts)
+      ? parameters.supportedReasoningEfforts.filter(
+          (value): value is string => typeof value === 'string' && value.trim().length > 0
+        )
+      : undefined
+    const compat =
+      isRecord(item.compat) || supportedReasoningEfforts
+        ? {
+            ...(isRecord(item.compat) ? item.compat : {}),
+            ...(supportedReasoningEfforts
+              ? { supportedReasoningEfforts: [...new Set(supportedReasoningEfforts)] }
+              : {}),
+          }
+        : undefined
+
     return {
       ...item,
-      reasoning: true,
+      id: modelId,
+      name: typeof item.name === 'string' ? item.name : modelId,
+      reasoning:
+        reasoning?.mode !== 'unsupported' ||
+        parameters.reasoningSupported === true ||
+        item.reasoning === true,
+      ...(compat ? { compat } : {}),
     }
   })
+
+  if (found) return nextModels
+  const templateModel = isRecord(nextModels[0]) ? nextModels[0] : {}
+  const supportedReasoningEfforts = Array.isArray(parameters.supportedReasoningEfforts)
+    ? parameters.supportedReasoningEfforts.filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0
+      )
+    : undefined
+  return [
+    {
+      ...templateModel,
+      id: modelId,
+      name: modelId,
+      reasoning:
+        reasoning?.mode !== 'unsupported' ||
+        parameters.reasoningSupported === true ||
+        templateModel.reasoning === true,
+      ...(supportedReasoningEfforts
+        ? {
+            compat: {
+              ...(isRecord(templateModel.compat) ? templateModel.compat : {}),
+              supportedReasoningEfforts: [...new Set(supportedReasoningEfforts)],
+            },
+          }
+        : {}),
+    },
+  ]
 }
 
-function forceProviderPrimaryReasoning(
-  providerConfig: unknown
+function forceProviderPrimaryModel(
+  providerConfig: unknown,
+  modelId: string,
+  reasoning: ReturnType<typeof resolveProviderReasoning>,
+  parameters: Record<string, unknown>
 ): Record<string, unknown> | undefined {
   if (!isRecord(providerConfig)) return undefined
   return {
     ...providerConfig,
-    models: forcePrimaryModelReasoning(providerConfig.models),
+    models: applyManagedModelEntry(providerConfig.models, modelId, reasoning, parameters),
   }
+}
+
+function resolveOpenClawModel(
+  provider: Provider,
+  providerName: string
+): {
+  primary: string
+  modelId: string
+  imagePrimary: string
+} {
+  const configured = resolveProviderModel(provider, PRIMARY_MODEL_ID).trim() || PRIMARY_MODEL_ID
+  const primary = configured.includes('/') ? configured : `${providerName}/${configured}`
+  const modelId = primary.slice(primary.lastIndexOf('/') + 1)
+  const parameters = resolveProviderParameters(provider)
+  const imageConfigured =
+    typeof parameters.imageModelId === 'string' && parameters.imageModelId.trim()
+      ? parameters.imageModelId.trim()
+      : primary
+  const imagePrimary = imageConfigured.includes('/')
+    ? imageConfigured
+    : `${providerName}/${imageConfigured}`
+  return { primary, modelId, imagePrimary }
+}
+
+function applyOpenClawDefaults(
+  config: OpenClawConfigFile,
+  selection: ReturnType<typeof resolveOpenClawModel>,
+  reasoning: ReturnType<typeof resolveProviderReasoning>,
+  parameters: Record<string, unknown>
+): OpenClawConfigFile {
+  const defaults = config.agents?.defaults || {}
+  const nextDefaults = {
+    ...defaults,
+    model: {
+      ...(defaults.model || {}),
+      primary: selection.primary,
+    },
+    imageModel:
+      typeof defaults.imageModel === 'object' && defaults.imageModel !== null
+        ? { ...defaults.imageModel, primary: selection.imagePrimary }
+        : { primary: selection.imagePrimary },
+  }
+  const thinkingDefault =
+    typeof parameters.thinkingDefault === 'string'
+      ? parameters.thinkingDefault
+      : reasoning &&
+          (reasoning.mode === 'effort' ||
+            reasoning.mode === 'thinking' ||
+            reasoning.mode === 'variant') &&
+          typeof reasoning.value === 'string'
+        ? reasoning.value
+        : reasoning?.visible === true
+          ? 'on'
+          : reasoning?.visible === false
+            ? 'off'
+            : undefined
+  if (thinkingDefault) {
+    ;(nextDefaults as Record<string, unknown>).thinkingDefault = thinkingDefault
+  }
+
+  const nextConfig: OpenClawConfigFile = {
+    ...config,
+    agents: {
+      ...(config.agents || {}),
+      defaults: nextDefaults,
+    },
+  }
+  return nextConfig
 }
 
 function replaceProviderEntry(
@@ -247,8 +378,38 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
     apiKey: provider.apiKey || '',
   }
 
-  const nextOpenClawConfig = replaceVariables(rawConfigTemplate, variables) as OpenClawConfigFile
+  const reasoning = resolveProviderReasoning(provider)
+  const parameters = resolveProviderParameters(provider)
+  const selection = resolveOpenClawModel(provider, providerName)
+  const nextOpenClawConfig = applyOpenClawDefaults(
+    replaceVariables(rawConfigTemplate, variables) as OpenClawConfigFile,
+    selection,
+    reasoning,
+    parameters
+  )
   const nextModelsConfig = replaceVariables(rawModelsTemplate, variables) as OpenClawModelsFile
+  if (isRecord(nextOpenClawConfig.models)) {
+    const providers = isRecord(nextOpenClawConfig.models.providers)
+      ? (nextOpenClawConfig.models.providers as Record<string, unknown>)
+      : {}
+    nextOpenClawConfig.models.providers = replaceProviderEntry(
+      providers,
+      providerName,
+      forceProviderPrimaryModel(providers[providerName], selection.modelId, reasoning, parameters)
+    )
+  }
+  if (isRecord(nextModelsConfig.providers)) {
+    nextModelsConfig.providers = replaceProviderEntry(
+      nextModelsConfig.providers,
+      providerName,
+      forceProviderPrimaryModel(
+        nextModelsConfig.providers[providerName],
+        selection.modelId,
+        reasoning,
+        parameters
+      )
+    )
+  }
 
   if (options.mode === 'overwrite') {
     const overwriteConfig: OpenClawConfigFile = {
@@ -259,13 +420,11 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
           ...(nextOpenClawConfig.agents?.defaults || {}),
           workspace: homeDir,
           imageModel: nextOpenClawConfig.agents?.defaults?.imageModel || {
-            primary: `${providerName}/${PRIMARY_MODEL_ID}`,
+            primary: selection.imagePrimary,
           },
           model: {
             ...(nextOpenClawConfig.agents?.defaults?.model || {}),
-            primary:
-              nextOpenClawConfig.agents?.defaults?.model?.primary ||
-              `${providerName}/${PRIMARY_MODEL_ID}`,
+            primary: nextOpenClawConfig.agents?.defaults?.model?.primary || selection.primary,
           },
         },
       },
@@ -293,7 +452,12 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
   mergedConfigModels.providers = replaceProviderEntry(
     mergedConfigProviders,
     providerName,
-    forceProviderPrimaryReasoning(nextConfigProviders?.[providerName])
+    forceProviderPrimaryModel(
+      nextConfigProviders?.[providerName],
+      selection.modelId,
+      reasoning,
+      parameters
+    )
   )
 
   const mergedAgents = deepMerge(
@@ -302,11 +466,15 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
   )
   const mergedDefaults = mergedAgents.defaults || {}
   const mergedModel = mergedDefaults.model || {}
-  const templatePrimary =
-    nextOpenClawConfig.agents?.defaults?.model?.primary || `${providerName}/${PRIMARY_MODEL_ID}`
+  const templatePrimary = selection.primary
   const templateImageModel = nextOpenClawConfig.agents?.defaults?.imageModel || {
-    primary: `${providerName}/${PRIMARY_MODEL_ID}`,
+    primary: selection.imagePrimary,
   }
+  const templateImageModelRecord = isRecord(templateImageModel) ? templateImageModel : {}
+  const existingImageModel =
+    typeof mergedDefaults.imageModel === 'object' && mergedDefaults.imageModel !== null
+      ? mergedDefaults.imageModel
+      : {}
   const workspace =
     typeof mergedDefaults.workspace === 'string' && mergedDefaults.workspace.trim()
       ? mergedDefaults.workspace
@@ -320,7 +488,11 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
       defaults: {
         ...mergedDefaults,
         workspace,
-        imageModel: templateImageModel,
+        imageModel: {
+          ...existingImageModel,
+          ...templateImageModelRecord,
+          primary: selection.imagePrimary,
+        },
         model: {
           ...mergedModel,
           primary: templatePrimary,
@@ -341,7 +513,12 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
     providers: replaceProviderEntry(
       mergedProviders,
       providerName,
-      forceProviderPrimaryReasoning(nextModelsProviders?.[providerName])
+      forceProviderPrimaryModel(
+        nextModelsProviders?.[providerName],
+        selection.modelId,
+        reasoning,
+        parameters
+      )
     ),
   }
 

@@ -27,6 +27,7 @@ import type {
   AppType,
   CodexSettings,
 } from '@anyaitools/core'
+import type { ModelCatalog, ModelCatalogRequest } from '@anyaitools/types'
 
 // ============================================================================
 // Codex API
@@ -289,6 +290,11 @@ export interface ConfigAPI {
   migrate: () => Promise<{ success: boolean; message: string }>
 }
 
+export interface ModelsAPI {
+  fetchCatalog: (request: ModelCatalogRequest) => Promise<ModelCatalog>
+  clearCatalogCache: (providerId?: string) => Promise<{ success: boolean }>
+}
+
 export interface SystemAPI {
   openFolder: () => Promise<{ success: boolean }>
   openUrl: (url: string) => Promise<{ success: boolean }>
@@ -328,6 +334,11 @@ const configAPI: ConfigAPI = {
   readAnyAIToolsConfigFiles: () => ipcRenderer.invoke('read-anyaitools-config-files'),
   writeAnyAIToolsConfigFiles: (files) => ipcRenderer.invoke('write-anyaitools-config-files', files),
   migrate: () => ipcRenderer.invoke('migrate-config'),
+}
+
+const modelsAPI: ModelsAPI = {
+  fetchCatalog: (request) => ipcRenderer.invoke('models:fetch-catalog', request),
+  clearCatalogCache: (providerId) => ipcRenderer.invoke('models:clear-catalog-cache', providerId),
 }
 
 const systemAPI: SystemAPI = {
@@ -483,6 +494,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openclaw: openclawAPI,
   grok: grokAPI,
   config: configAPI,
+  models: modelsAPI,
   system: systemAPI,
   update: updateAPI,
   sync: syncAPI,
@@ -503,6 +515,7 @@ export interface ElectronAPI {
   openclaw: OpenClawAPI
   grok: GrokAPI
   config: ConfigAPI
+  models: ModelsAPI
   system: SystemAPI
   update: UpdateAPI
   sync: SyncAPI

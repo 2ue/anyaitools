@@ -11,8 +11,12 @@ import type {
   EditProviderInput,
   PresetTemplate,
   ApiBackend,
+  ModelCatalog,
+  ModelReasoningMode,
 } from '@anyaitools/types'
 import { BUTTON_STYLES } from '../styles/button'
+
+type ModelFormTool = 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
 
 const API_BACKEND_OPTIONS: Array<{ value: ApiBackend; label: string }> = [
   { value: 'chat_completions', label: 'Chat Completions' },
@@ -20,12 +24,39 @@ const API_BACKEND_OPTIONS: Array<{ value: ApiBackend; label: string }> = [
   { value: 'messages', label: 'Messages' },
 ]
 
+const DEFAULT_REASONING_OPTIONS: Record<ModelFormTool, Array<{ value: string; label: string }>> = {
+  codex: [
+    { value: 'none', label: '关闭' },
+    { value: 'minimal', label: 'Minimal' },
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'xhigh', label: 'XHigh' },
+  ],
+  claude: [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'xhigh', label: 'XHigh' },
+    { value: 'max', label: 'Max' },
+  ],
+  gemini: [],
+  opencode: [],
+  openclaw: [],
+  grok: [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'xhigh', label: 'XHigh' },
+  ],
+}
+
 interface Props {
   provider?: Provider
   preset?: PresetTemplate
   isClone?: boolean
   existingProviders?: Provider[]
-  tool?: 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
+  tool?: ModelFormTool
   onSubmit: (input: AddProviderInput | EditProviderInput) => void | Promise<void>
   onCancel: () => void
 }
@@ -49,6 +80,133 @@ export default function ProviderForm({
   const [useBuiltinModel, setUseBuiltinModel] = useState(false)
   const [clearApiKey, setClearApiKey] = useState(false)
   const [nameError, setNameError] = useState('')
+  const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState('')
+  const [modelSource, setModelSource] = useState<'catalog' | 'manual'>('manual')
+  const [variant, setVariant] = useState('')
+  const [reasoningMode, setReasoningMode] = useState<ModelReasoningMode>('unsupported')
+  const [reasoningValue, setReasoningValue] = useState('')
+  const [reasoningVisible, setReasoningVisible] = useState(false)
+
+  const supportsModelConfig = tool !== undefined
+  const selectedCatalogModel = catalog?.models.find((item) => item.id === model)
+  const catalogModels = catalog?.models || []
+  const catalogVariants = selectedCatalogModel?.variants || []
+  const reasoningOptions = (() => {
+    const supported = selectedCatalogModel?.reasoning?.supportedValues
+    if (supported?.length) {
+      return supported.map((value) => ({ value: String(value), label: String(value) }))
+    }
+    if (tool === 'opencode' && catalogVariants.length) {
+      return catalogVariants.map((value) => ({ value, label: value }))
+    }
+    return DEFAULT_REASONING_OPTIONS[tool] || []
+  })()
+
+  const fetchCatalog = async (refresh = true) => {
+    if (!supportsModelConfig || !window.electronAPI?.models) return
+    const resolvedApiKey =
+      apiKey.trim() || (!provider || isClone ? provider?.apiKey || '' : provider.apiKey || '')
+    setCatalogLoading(true)
+    setCatalogError('')
+    try {
+      const nextCatalog = await window.electronAPI.models.fetchCatalog({
+        tool,
+        refresh,
+        provider: {
+          id: provider?.id || `${tool}-draft`,
+          name: name.trim() || `${tool}-draft`,
+          baseUrl: baseUrl.trim(),
+          apiKey: resolvedApiKey,
+          model: model.trim() || undefined,
+          modelConfig: model.trim()
+            ? {
+                modelId: model.trim(),
+                source: modelSource === 'manual' ? 'manual' : 'cached',
+              }
+            : undefined,
+        },
+      })
+      setCatalog(nextCatalog)
+      setModelSource(nextCatalog.models.length > 0 ? 'catalog' : 'manual')
+      if (!model.trim() && nextCatalog.models[0]?.id) {
+        setModel(nextCatalog.models[0].id)
+      }
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : String(error))
+      setModelSource('manual')
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
+  const buildReasoningConfig = () => {
+    if (!reasoningValue.trim() && reasoningMode === 'unsupported' && !reasoningVisible) {
+      return undefined
+    }
+
+    const mode =
+      tool === 'gemini'
+        ? 'budget'
+        : tool === 'opencode' && variant
+          ? 'variant'
+          : reasoningMode === 'unsupported' && reasoningValue.trim()
+            ? 'effort'
+            : reasoningMode
+    const parsedValue =
+      mode === 'budget' && reasoningValue.trim()
+        ? Number(reasoningValue.trim())
+        : reasoningValue.trim() || undefined
+
+    return {
+      mode,
+      ...(parsedValue !== undefined &&
+      !(typeof parsedValue === 'number' && Number.isNaN(parsedValue))
+        ? { value: parsedValue }
+        : {}),
+      ...(reasoningVisible ? { visible: true } : {}),
+      ...(reasoningOptions.length
+        ? { supportedValues: reasoningOptions.map((option) => option.value) }
+        : {}),
+    }
+  }
+
+  const buildModelConfig = () => {
+    const modelId = model.trim()
+    const reasoning = buildReasoningConfig()
+    if (!modelId && !reasoning && !variant) return undefined
+
+    const parameters: Record<string, unknown> = {}
+    if (tool === 'grok') {
+      parameters.supportsReasoningEffort = Boolean(reasoningValue.trim())
+      parameters.defaultReasoningEffort = reasoningValue.trim() || undefined
+    }
+    if (tool === 'claude') {
+      parameters.alwaysThinkingEnabled = reasoningVisible
+    }
+    if (tool === 'gemini') {
+      parameters.generateContentConfig = {}
+    }
+    if (tool === 'openclaw' && reasoningValue.trim()) {
+      parameters.thinkingDefault = reasoningValue.trim()
+    }
+
+    return {
+      ...(modelId ? { modelId } : {}),
+      ...(selectedCatalogModel?.name ? { displayName: selectedCatalogModel.name } : {}),
+      source:
+        modelSource === 'catalog'
+          ? selectedCatalogModel?.source || catalog?.source || 'cached'
+          : 'manual',
+      ...(variant ? { variant } : {}),
+      ...(reasoning ? { reasoning } : {}),
+      ...(Object.values(parameters).some((value) => value !== undefined) ? { parameters } : {}),
+      ...(selectedCatalogModel?.capabilities
+        ? { capabilities: selectedCatalogModel.capabilities }
+        : {}),
+    }
+  }
 
   useEffect(() => {
     console.log('[ProviderForm] useEffect triggered', { provider, preset })
@@ -59,7 +217,20 @@ export default function ProviderForm({
       setDesc(provider.desc || '')
       setBaseUrl(provider.baseUrl)
       setApiKey('') // 编辑时 API Key 不显示,需重新输入
-      setModel(provider.model || '')
+      setModel(provider.modelConfig?.modelId || provider.model || '')
+      setModelSource(
+        provider.modelConfig?.source && provider.modelConfig.source !== 'manual'
+          ? 'catalog'
+          : 'manual'
+      )
+      setVariant(provider.modelConfig?.variant || '')
+      setReasoningMode(provider.modelConfig?.reasoning?.mode || 'unsupported')
+      setReasoningValue(
+        provider.modelConfig?.reasoning?.value === undefined
+          ? ''
+          : String(provider.modelConfig.reasoning.value)
+      )
+      setReasoningVisible(provider.modelConfig?.reasoning?.visible ?? false)
       setApiBackend(provider.apiBackend || 'chat_completions')
       setSupportsBackendSearch(provider.supportsBackendSearch ?? false)
       setUseBuiltinModel(tool === 'grok' && !provider.baseUrl.trim())
@@ -72,7 +243,18 @@ export default function ProviderForm({
       setDesc('')
       setBaseUrl(preset.baseUrl)
       setApiKey('')
-      setModel(preset.model || '')
+      setModel(preset.modelConfig?.modelId || preset.model || '')
+      setModelSource(
+        preset.modelConfig?.source && preset.modelConfig.source !== 'manual' ? 'catalog' : 'manual'
+      )
+      setVariant(preset.modelConfig?.variant || '')
+      setReasoningMode(preset.modelConfig?.reasoning?.mode || 'unsupported')
+      setReasoningValue(
+        preset.modelConfig?.reasoning?.value === undefined
+          ? ''
+          : String(preset.modelConfig.reasoning.value)
+      )
+      setReasoningVisible(preset.modelConfig?.reasoning?.visible ?? false)
       setApiBackend(preset.apiBackend || 'chat_completions')
       setSupportsBackendSearch(preset.supportsBackendSearch ?? false)
       setUseBuiltinModel(tool === 'grok' && !preset.baseUrl.trim())
@@ -85,6 +267,11 @@ export default function ProviderForm({
       setBaseUrl('')
       setApiKey('')
       setModel('')
+      setModelSource('manual')
+      setVariant('')
+      setReasoningMode('unsupported')
+      setReasoningValue('')
+      setReasoningVisible(false)
       setApiBackend('chat_completions')
       setSupportsBackendSearch(false)
       setUseBuiltinModel(false)
@@ -147,15 +334,19 @@ export default function ProviderForm({
 
     const trimmedName = name.trim()
     const trimmedDesc = desc.trim()
+    const trimmedModel = model.trim()
+    const modelConfig = buildModelConfig()
 
     const baseInput = {
       name: trimmedName,
       desc: trimmedDesc || undefined,
       baseUrl: baseUrl.trim(),
       ...(finalApiKey !== undefined ? { apiKey: finalApiKey } : {}),
+      ...(trimmedModel ? { model: trimmedModel } : {}),
+      ...(modelConfig ? { modelConfig } : {}),
       ...(tool === 'grok'
         ? {
-            model: model.trim(),
+            model: trimmedModel,
             ...(useBuiltinModel ? {} : { apiBackend, supportsBackendSearch }),
           }
         : {}),
@@ -239,20 +430,6 @@ export default function ProviderForm({
                 自定义端点
               </button>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              模型 ID <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="grok-build"
-              required
-            />
           </div>
 
           {!useBuiltinModel && (
@@ -380,6 +557,195 @@ export default function ProviderForm({
               </span>
               清除已保存密钥
             </button>
+          )}
+        </div>
+      )}
+
+      {supportsModelConfig && (
+        <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <label className="block text-sm font-medium text-gray-700">
+              模型与推理设置 {tool === 'grok' && <span className="text-red-500">*</span>}
+            </label>
+            <button
+              type="button"
+              onClick={() => void fetchCatalog(true)}
+              disabled={catalogLoading}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {catalogLoading ? '拉取中…' : '刷新模型列表'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>来源：</span>
+            <button
+              type="button"
+              onClick={() => setModelSource('catalog')}
+              className={`rounded-md px-2 py-1 ${
+                modelSource === 'catalog' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'
+              }`}
+            >
+              目录/缓存
+            </button>
+            <button
+              type="button"
+              onClick={() => setModelSource('manual')}
+              className={`rounded-md px-2 py-1 ${
+                modelSource === 'manual' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'
+              }`}
+            >
+              手动输入
+            </button>
+            {catalog?.source && <span className="ml-auto">来源：{catalog.source}</span>}
+          </div>
+
+          {catalogModels.length > 0 && (
+            <select
+              value={catalogModels.some((entry) => entry.id === model) ? model : ''}
+              onChange={(event) => {
+                const selected = catalogModels.find((entry) => entry.id === event.target.value)
+                if (!selected) return
+                setModel(selected.id)
+                setModelSource('catalog')
+                setVariant(tool === 'opencode' ? selected.variants?.[0] || '' : '')
+                setReasoningMode(
+                  selected.reasoning?.mode || (tool === 'gemini' ? 'budget' : 'effort')
+                )
+                setReasoningValue(
+                  selected.reasoning?.supportedValues?.[0] === undefined
+                    ? ''
+                    : String(selected.reasoning.supportedValues[0])
+                )
+              }}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="选择模型"
+            >
+              <option value="">从目录选择模型</option>
+              {catalogModels.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name ? `${entry.name} (${entry.id})` : entry.id}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <input
+            type="text"
+            value={model}
+            onChange={(event) => {
+              setModel(event.target.value)
+              setModelSource('manual')
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={
+              tool === 'opencode' ? 'provider/model-id' : tool === 'grok' ? 'grok-build' : '模型 ID'
+            }
+            required={tool === 'grok'}
+          />
+
+          {catalogError && <p className="text-xs text-amber-700">{catalogError}</p>}
+          {catalog?.warnings?.map((warning) => (
+            <p key={warning} className="text-xs text-amber-700">
+              {warning}，仍可手动输入模型。
+            </p>
+          ))}
+
+          {tool === 'opencode' && (catalogVariants.length > 0 || variant) && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Variant / 推理档位
+              </label>
+              {catalogVariants.length > 0 ? (
+                <select
+                  value={variant}
+                  onChange={(event) => {
+                    setVariant(event.target.value)
+                    setReasoningMode('variant')
+                  }}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">不指定</option>
+                  {catalogVariants.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={variant}
+                  onChange={(event) => {
+                    setVariant(event.target.value)
+                    setReasoningMode('variant')
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="例如 high"
+                />
+              )}
+            </div>
+          )}
+
+          {tool === 'gemini' ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                thinkingBudget（按模型能力填写）
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={reasoningValue}
+                onChange={(event) => {
+                  setReasoningMode('budget')
+                  setReasoningValue(event.target.value)
+                }}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="留空表示使用模型默认值"
+              />
+            </div>
+          ) : (
+            reasoningOptions.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {tool === 'openclaw' ? '思考强度（按模型 profile）' : '推理强度'}
+                </label>
+                <select
+                  value={reasoningValue}
+                  onChange={(event) => {
+                    setReasoningMode(tool === 'openclaw' ? 'effort' : 'effort')
+                    setReasoningValue(event.target.value)
+                  }}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">不指定</option>
+                  {reasoningOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )
+          )}
+
+          {(tool === 'claude' || tool === 'gemini' || tool === 'grok') && (
+            <label className="flex items-center justify-between gap-3 text-xs text-gray-600">
+              <span>
+                {tool === 'grok'
+                  ? '显示 thinking blocks'
+                  : tool === 'gemini'
+                    ? '返回 thoughts'
+                    : '启用 extended thinking'}
+              </span>
+              <input
+                type="checkbox"
+                checked={reasoningVisible}
+                onChange={(event) => setReasoningVisible(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+            </label>
           )}
         </div>
       )}

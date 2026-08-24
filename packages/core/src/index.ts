@@ -38,6 +38,7 @@ export {
   type PresetTemplate,
   type AddPresetInput,
   type EditPresetInput,
+  type ToolModelConfig,
   ProviderNotFoundError,
 } from './tool-manager.js'
 
@@ -45,6 +46,17 @@ export {
 export { CODEX_PRESETS } from './presets/codex.js'
 export { CC_PRESETS } from './presets/claude.js'
 export { MCP_PRESETS, MCP_PRESETS_DETAIL, type MCPPresetDetail } from './presets/mcp.js'
+
+export { fetchModelCatalog, clearModelCatalogCache } from './model-catalog.js'
+export type {
+  ModelToolType,
+  ModelCatalogSource,
+  ModelReasoningMode,
+  ModelReasoningConfig,
+  ModelCatalogEntry,
+  ModelCatalog,
+  ModelCatalogRequest,
+} from '@anyaitools/types'
 export { GEMINI_PRESETS } from './presets/gemini.js'
 export { OPENCODE_PRESETS } from './presets/opencode.js'
 export { OPENCLAW_PRESETS } from './presets/openclaw.js'

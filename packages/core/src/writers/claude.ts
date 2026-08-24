@@ -6,12 +6,18 @@ import type { WriteOptions } from '../tool-manager.types.js'
 import { getClaudeConfigPath, getClaudeDir } from '../paths.js'
 import { ensureDir, fileExists } from '../utils/file.js'
 import { replaceVariables, deepMerge } from '../utils/template.js'
+import {
+  resolveProviderModel,
+  resolveProviderParameters,
+  resolveProviderReasoning,
+} from '../model-config.js'
 
 /**
  * Claude Code settings.json 结构
  */
 interface ClaudeSettings {
   model?: string
+  effortLevel?: string
   env?: ClaudeEnv
   permissions?: {
     allow?: string[]
@@ -92,6 +98,26 @@ function loadClaudeTemplateConfig(): ClaudeSettings {
   return CLAUDE_CONFIG_TEMPLATE
 }
 
+function applyClaudeModelConfig(config: ClaudeSettings, provider: Provider): void {
+  config.model = resolveProviderModel(provider, config.model || 'sonnet')
+  const reasoning = resolveProviderReasoning(provider)
+  if (reasoning?.mode === 'effort' && typeof reasoning.value === 'string') {
+    config.effortLevel = reasoning.value
+  }
+
+  const parameters = resolveProviderParameters(provider)
+  if (typeof parameters.alwaysThinkingEnabled === 'boolean') {
+    config.alwaysThinkingEnabled = parameters.alwaysThinkingEnabled
+  }
+  if (typeof parameters.maxThinkingTokens === 'number') {
+    config.env = config.env || {}
+    config.env.MAX_THINKING_TOKENS = parameters.maxThinkingTokens
+  }
+  if (typeof parameters.effortLevel === 'string' && parameters.effortLevel.trim()) {
+    config.effortLevel = parameters.effortLevel.trim()
+  }
+}
+
 /**
  * 写入 Claude 配置（零破坏性）
  *
@@ -119,6 +145,7 @@ export function writeClaudeConfig(provider: Provider, options: WriteOptions = {}
   }) as ClaudeSettings
 
   if (options.mode === 'overwrite') {
+    applyClaudeModelConfig(defaultConfig, provider)
     fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), { mode: 0o600 })
     return
   }
@@ -134,6 +161,7 @@ export function writeClaudeConfig(provider: Provider, options: WriteOptions = {}
   const mergedConfig = deepMerge<ClaudeSettings>(defaultConfig, userConfig)
 
   // 4. 强制更新认证字段为最新值
+  applyClaudeModelConfig(mergedConfig, provider)
   mergedConfig.env = mergedConfig.env || {}
   mergedConfig.env.ANTHROPIC_AUTH_TOKEN = provider.apiKey
   mergedConfig.env.ANTHROPIC_BASE_URL = provider.baseUrl

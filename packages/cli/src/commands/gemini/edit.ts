@@ -11,7 +11,7 @@ import {
 
 export function editCommand(program: Command): void {
   const command = program.command('edit [name]').description('编辑 Gemini CLI 服务商')
-  addProviderEditOptions(command)
+  addProviderEditOptions(command, { modelOptions: true })
 
   command.action(async (name: string | undefined, options: ProviderEditCommandOptions) => {
     try {

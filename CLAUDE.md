@@ -1,4 +1,3 @@
-
 # anyaitools 项目开发规范
 
 ## 项目简介
@@ -6,6 +5,7 @@
 anyaitools 是一个面向 Any AI Tools 工作流的配置与集成工具，用于管理 Codex、Claude Code、Gemini CLI、OpenCode、OpenClaw 和 MCP 的相关配置。
 
 **交付形式**：
+
 - CLI：命令行工具（快速切换，可脚本化）
 - Desktop：Electron 图形界面（可视化管理，直观）
 
@@ -110,6 +110,7 @@ function createToolManager(tool: ToolType): ToolManager {
 ### ❌ 禁止 1：抽象写入层
 
 **错误示例**：
+
 ```typescript
 // ❌ 不要这样做
 interface ConfigWriter {
@@ -121,6 +122,7 @@ class ClaudeWriter implements ConfigWriter { ... }
 ```
 
 **正确做法**：
+
 ```typescript
 // ✅ 直接硬编码
 export function writeCodexConfig(provider: Provider) { ... }
@@ -130,6 +132,7 @@ export function writeClaudeConfig(provider: Provider) { ... }
 ### ❌ 禁止 2：胶水层（如果做 GUI）
 
 **错误示例**：
+
 ```typescript
 // ❌ 不要为了"可能迁移 Tauri"搞胶水层
 interface PlatformAdapter {
@@ -139,6 +142,7 @@ interface PlatformAdapter {
 ```
 
 **正确做法**：
+
 ```typescript
 // ✅ Desktop 直接依赖 core，直接用 Electron IPC
 import { switchProvider } from '@anyaitools/core'
@@ -157,6 +161,7 @@ ipcMain.handle('switch-provider', async (event, id) => {
 ### ❌ 禁止 4：过度的错误处理
 
 **错误示例**：
+
 ```typescript
 // ❌ 不要为每个可能的错误创建类
 class InvalidBaseUrlError extends Error { ... }
@@ -165,6 +170,7 @@ class InvalidProviderTypeError extends Error { ... }
 ```
 
 **正确做法**：
+
 ```typescript
 // ✅ 只为关键错误创建类，其他用普通 Error
 export class ConfigNotFoundError extends Error { ... }
@@ -179,6 +185,7 @@ if (!isValidUrl(baseUrl)) {
 ### ❌ 禁止 5：不必要的依赖
 
 **禁止引入**：
+
 - lodash（用原生 JS）
 - axios（不需要 HTTP 请求）
 - fs-extra（内置 fs 够用）
@@ -191,6 +198,7 @@ if (!isValidUrl(baseUrl)) {
 ### ❌ 禁止 6：异步 I/O（配置文件读写）
 
 **错误示例**：
+
 ```typescript
 // ❌ 不要用异步
 export async function loadConfig(): Promise<Config> {
@@ -200,6 +208,7 @@ export async function loadConfig(): Promise<Config> {
 ```
 
 **正确做法**：
+
 ```typescript
 // ✅ 用同步（配置文件小，< 1ms）
 export function loadConfig(): Config {
@@ -209,6 +218,7 @@ export function loadConfig(): Config {
 ```
 
 **理由**：
+
 - 配置文件 < 50KB，同步读取 < 1ms
 - 同步代码更简单，没有 Promise/async/await 复杂性
 - CLI 工具不需要高并发
@@ -216,6 +226,7 @@ export function loadConfig(): Config {
 ### ❌ 禁止 7：复杂的状态管理（如果做 GUI）
 
 **错误示例**：
+
 ```typescript
 // ❌ 不要引入 Zustand/Redux
 import create from 'zustand'
@@ -224,6 +235,7 @@ const useStore = create((set) => ({ ... }))
 ```
 
 **正确做法**：
+
 ```typescript
 // ✅ 用 React state（功能简单，够用）
 const [providers, setProviders] = useState<Provider[]>([])
@@ -250,14 +262,17 @@ packages/core/src/
 ### 命名规范
 
 **文件名**：
+
 - 小写 + 中划线：`config-manager.ts`（如果需要多个单词）
 - 优先单个单词：`config.ts`、`providers.ts`
 
 **函数名**：
+
 - 动词开头：`loadConfig()`、`saveConfig()`、`addProvider()`
 - 布尔函数：`isValidUrl()`、`hasProvider()`
 
 **类型名**：
+
 - PascalCase：`Provider`、`Config`、`ToolType`
 - 接口不需要 `I` 前缀（TypeScript 惯例）
 
@@ -276,6 +291,7 @@ const config = loadConfig()
 ```
 
 **不需要 JSDoc**（除非发布 npm 包）：
+
 - TypeScript 类型已经是最好的文档
 - 过度的 JSDoc 增加维护成本
 
@@ -284,6 +300,7 @@ const config = loadConfig()
 **三层错误处理**：
 
 1. **Core 层**：抛出结构化错误
+
    ```typescript
    export class ProviderNotFoundError extends Error {
      constructor(id: string) {
@@ -294,22 +311,24 @@ const config = loadConfig()
    ```
 
 2. **CLI 层**：捕获错误，友好提示
+
    ```typescript
    try {
      switchProvider(id)
      console.log(chalk.green('✅ 切换成功'))
-	   } catch (error) {
-	     if (error instanceof ProviderNotFoundError) {
-	       console.error(chalk.red(`❌ ${error.message}`))
-	       console.log(chalk.blue('💡 查看服务商列表: aat cx list'))
-	     } else {
-	       console.error(chalk.red(`❌ ${error.message}`))
-	     }
-	     process.exit(1)
-	   }
+   } catch (error) {
+     if (error instanceof ProviderNotFoundError) {
+       console.error(chalk.red(`❌ ${error.message}`))
+       console.log(chalk.blue('💡 查看服务商列表: aat cx list'))
+     } else {
+       console.error(chalk.red(`❌ ${error.message}`))
+     }
+     process.exit(1)
+   }
    ```
 
 3. **文件操作**：备份 + 回滚
+
    ```typescript
    const backupPath = `${configPath}.bak`
    fs.copyFileSync(configPath, backupPath)
@@ -330,12 +349,14 @@ const config = loadConfig()
 #### 环境保护规则（重要！）
 
 **禁止改动生产环境**：
+
 - ❌ **绝对禁止**删除或修改 `~/.anyaitools`（正式环境配置）
 - ❌ **绝对禁止**删除或修改 `~/.codex`（正式环境配置）
 - ❌ **绝对禁止**删除或修改 `~/.claude`（正式环境配置）
 - ❌ **绝对禁止**在测试中使用 `rm -rf ~` 开头的命令
 
 **使用开发环境测试**：
+
 - ✅ CLI/Desktop 手动测试时使用 `NODE_ENV=development`
 - ✅ 开发环境路径：`/var/folders/.../anyaitools-dev/.anyaitools`
 - ✅ 测试前清理：`rm -rf /var/folders/.../anyaitools-dev/.anyaitools`
@@ -346,12 +367,14 @@ const config = loadConfig()
   ```
 
 **使用测试环境（自动）**：
+
 - ✅ 单元测试（Vitest）自动使用独立的测试目录
 - ✅ 每个测试进程有独立的配置目录（基于 PID）
 - ✅ 测试路径：`/tmp/anyaitools-test/.anyaitools`
 - ✅ 测试结束后自动清理（可选）
 
 **测试前检查清单**：
+
 ```bash
 # ❌ 错误示例 - 会破坏生产环境
 rm -rf ~/.anyaitools
@@ -368,14 +391,17 @@ pnpm test
 #### 单元测试规范
 
 **必须测试**：
+
 - Core 模块所有公开函数
 - 边界情况（配置文件不存在、格式错误、权限错误）
 
 **不需要测试**：
+
 - CLI 交互式输入（手动测试）
 - 文件系统操作（集成测试）
 
 **示例**：
+
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest'
 import { addProvider, getProvider } from './providers'
@@ -438,6 +464,7 @@ fs.renameSync(tempPath, configPath)
 ### 5. 零破坏性写入
 
 **Codex 配置**：
+
 ```typescript
 // ✅ 只更新管理的字段
 config.model_provider = provider.name
@@ -445,11 +472,12 @@ config.model_providers[provider.name] = { ... }
 
 // ✅ 保留其他字段
 // - model_reasoning_effort
-// - disable_response_storage
+// - model_verbosity
 // - 其他用户自定义配置
 ```
 
 **Claude 配置**：
+
 ```typescript
 // ✅ 只更新 env 中的两个字段
 settings.env.ANTHROPIC_AUTH_TOKEN = provider.apiKey
@@ -466,6 +494,7 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 ### 并行开发计划（6周）
 
 **Week 1：Core 基础**
+
 - [ ] 初始化 Monorepo（pnpm workspace）
 - [ ] 实现 `types.ts`（数据结构定义）
 - [ ] 实现 `config.ts`（配置读写）
@@ -476,6 +505,7 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 - **里程碑**：core 模块可独立测试
 
 **Week 2：Core 完善 + CLI 开始**
+
 - [ ] 完善 core（`utils/validator.ts`, `utils/file.ts`）
 - [ ] 错误处理和边界情况
 - [ ] CLI 框架搭建（Commander.js）
@@ -483,6 +513,7 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 - **里程碑**：CLI 基本可用，可发布 alpha 版本
 
 **Week 3：CLI 完善 + Desktop 开始**
+
 - [ ] CLI 所有命令（`edit`, `remove`, `init`）
 - [ ] CLI 测试和文档
 - [ ] Desktop 框架搭建
@@ -493,6 +524,7 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 - **里程碑**：CLI 功能完整，Desktop 能启动
 
 **Week 4-5：并行完善**
+
 - **CLI 方向**：
   - [ ] 优化交互体验
   - [ ] 完善错误提示
@@ -510,6 +542,7 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 - **里程碑**：CLI 和 Desktop 功能完整
 
 **Week 6：集成测试和发布**
+
 - [ ] 集成测试（CLI + Desktop 共享 core）
 - [ ] 跨平台测试（macOS/Windows/Linux）
 - [ ] 打包
@@ -521,16 +554,19 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 ### 模块开发优先级
 
 **优先级 P0（必须）**：
+
 1. Core 模块（基础）
 2. CLI 核心命令
 3. Desktop 主界面和基本操作
 
 **优先级 P1（重要）**：
+
 1. CLI 高级命令（edit, validate）
 2. Desktop 设置页面
 3. 错误处理完善
 
 **优先级 P2（可选）**：
+
 1. 系统托盘（Desktop）
 2. 自动更新（Desktop）
 3. 配置导入/导出
@@ -540,14 +576,15 @@ settings.env.ANTHROPIC_BASE_URL = provider.baseUrl
 #### Electron 安全最佳实践
 
 **必须遵守**：
+
 ```typescript
 // ✅ 主进程窗口配置
 new BrowserWindow({
   webPreferences: {
-    contextIsolation: true,       // 必须：隔离上下文
-    nodeIntegration: false,         // 必须：禁用 Node 集成
+    contextIsolation: true, // 必须：隔离上下文
+    nodeIntegration: false, // 必须：禁用 Node 集成
     preload: path.join(__dirname, 'preload.js'),
-  }
+  },
 })
 
 // ✅ Preload script
@@ -560,6 +597,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 #### 不需要的抽象层
 
 **❌ 错误**：
+
 ```typescript
 // 不要搞 API 抽象层
 interface DesktopAPI {
@@ -569,6 +607,7 @@ class ElectronAPI implements DesktopAPI { ... }
 ```
 
 **✅ 正确**：
+
 ```typescript
 // Desktop 主进程直接调用 core
 import { switchProvider } from '@anyaitools/core'
@@ -582,13 +621,14 @@ ipcMain.handle('switch-provider', (e, id) => switchProvider(id))
 - **样式**：简单 CSS 或 Tailwind（不需要 CSS-in-JS）
 - **路由**：不需要（单页应用）
 - **图标**：统一使用 `lucide-react`（项目已引入，不引入其他图标库）
+
   ```typescript
   // ✅ 正确：使用 lucide-react
   import { Save, Upload, Download } from 'lucide-react'
 
   // ❌ 错误：不要引入其他图标库
-  import { AiOutlineSave } from 'react-icons/ai'  // ❌ 禁止
-  import SaveIcon from '@mui/icons-material/Save'  // ❌ 禁止
+  import { AiOutlineSave } from 'react-icons/ai' // ❌ 禁止
+  import SaveIcon from '@mui/icons-material/Save' // ❌ 禁止
   ```
 
 ## 提交规范
@@ -604,6 +644,7 @@ ipcMain.handle('switch-provider', (e, id) => switchProvider(id))
 ```
 
 **Type**：
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `refactor`: 重构（不改变功能）
@@ -612,6 +653,7 @@ ipcMain.handle('switch-provider', (e, id) => switchProvider(id))
 - `chore`: 构建/工具
 
 **示例**：
+
 ```
 feat(core): add provider management
 
@@ -652,16 +694,17 @@ Closes #1
 ```typescript
 // tsup.config.ts
 export default defineConfig({
-  noExternal: ['@anyaitools/core'],  // 强制打包 @anyaitools/core 源码
+  noExternal: ['@anyaitools/core'], // 强制打包 @anyaitools/core 源码
   esbuildOptions(options) {
     options.alias = {
-      '@anyaitools/core': resolve(__dirname, '../core/src/index.ts'),  // 源码路径
+      '@anyaitools/core': resolve(__dirname, '../core/src/index.ts'), // 源码路径
     }
   },
 })
 ```
 
 **为什么这样设计**：
+
 - ✅ 用户只需要 `npm install -g @vebing-tools/anyaitools`，无需关心 core 包
 - ✅ CLI bundle 包含完整功能，无外部依赖
 - ✅ Core 作为内部模块，不需要发布和维护单独的 npm 包
@@ -679,6 +722,7 @@ npm run version 3.0.4
 ```
 
 **脚本功能**：
+
 - ✅ 自动修改所有包的 `package.json` 版本号
   - `package.json` (根目录)
   - `packages/core/package.json`
@@ -689,6 +733,7 @@ npm run version 3.0.4
 - ✅ 提示下一步操作
 
 **禁止手动修改版本号**：
+
 - ❌ 不要手动修改单个 package.json
 - ❌ 不要使用 `npm version` 命令（会触发 git 操作）
 - ✅ 统一使用 `scripts/bump-version.js`
@@ -741,6 +786,7 @@ npm run version 3.0.4
    pnpm build
    ```
 5. **执行发布前检查**：
+
    ```bash
    # 检查 1：版本号一致性
    grep -h '"version":' package.json packages/*/package.json
@@ -751,6 +797,7 @@ npm run version 3.0.4
    # 检查 3：确认 tag 不存在
    git fetch --tags && git tag -l | grep v3.0.4
    ```
+
 6. **提交并打 tag**：
    ```bash
    git add .
@@ -790,6 +837,7 @@ git push && git push --tags
 ```
 
 **如果 tag 已存在且无法删除**（极少数情况）：
+
 ```bash
 # 最后手段：增加版本号
 npm run version 3.1.2
@@ -816,6 +864,7 @@ git push && git push --tags
 ### Q: 如果要支持第 3 个工具（如 Cursor）怎么办？
 
 **A**:
+
 1. 在 `writers/` 添加 `cursor.ts`
 2. 实现 `writeCursorConfig()`
 3. 在 `switchProvider()` 添加分支
@@ -843,6 +892,7 @@ git push && git push --tags
 ```
 
 **强制检查清单**：
+
 - [ ] 是否阅读了所有 4 个文档？
 - [ ] 是否理解了"拒绝的需求"和原因？
 - [ ] 是否确认了当前任务在功能清单中？
@@ -881,19 +931,19 @@ Step 5: 检查代码复杂度
 
 **在写任何代码前，检查是否违反以下禁止项：**
 
-| 禁止项 | 说明 | 文档位置 |
-|--------|------|----------|
-| ❌ fs-extra | 省 1 行代码，引入 4 个依赖 | `docs/技术选型.md:126-160` |
-| ❌ dotenv | NODE_ENV 零依赖零配置 | `docs/技术选型.md:192-264` |
-| ❌ 配置文件分离 | 性能慢 17 倍，复杂度 +3 倍 | `docs/技术选型.md:315-380` |
-| ❌ 抽象写入层 | 只有 2 个工具，YAGNI | `docs/需求分析.md:40-55` |
-| ❌ Electron 胶水层 | UI 简单，抽象层占比 40% | `docs/需求分析.md:56-71` |
-| ❌ validate/backup/restore 命令 | 无实际价值 | `docs/功能清单.md:44-54` |
-| ❌ 预设管理仅 UI 支持 | 违反功能对等原则 | `docs/需求分析.md:84-100` |
-| ❌ 异步 I/O（配置读写） | 配置小，同步更简单 | `CLAUDE.md:136-160` |
-| ❌ Zustand/Redux | React state 够用 | `CLAUDE.md:161-176` |
-| ❌ 手动修改版本号 | 必须使用 `scripts/bump-version.js` | `CLAUDE.md:577-602` |
-| ❌ 其他图标库 | 统一使用 lucide-react | `CLAUDE.md:527-535` |
+| 禁止项                          | 说明                               | 文档位置                   |
+| ------------------------------- | ---------------------------------- | -------------------------- |
+| ❌ fs-extra                     | 省 1 行代码，引入 4 个依赖         | `docs/技术选型.md:126-160` |
+| ❌ dotenv                       | NODE_ENV 零依赖零配置              | `docs/技术选型.md:192-264` |
+| ❌ 配置文件分离                 | 性能慢 17 倍，复杂度 +3 倍         | `docs/技术选型.md:315-380` |
+| ❌ 抽象写入层                   | 只有 2 个工具，YAGNI               | `docs/需求分析.md:40-55`   |
+| ❌ Electron 胶水层              | UI 简单，抽象层占比 40%            | `docs/需求分析.md:56-71`   |
+| ❌ validate/backup/restore 命令 | 无实际价值                         | `docs/功能清单.md:44-54`   |
+| ❌ 预设管理仅 UI 支持           | 违反功能对等原则                   | `docs/需求分析.md:84-100`  |
+| ❌ 异步 I/O（配置读写）         | 配置小，同步更简单                 | `CLAUDE.md:136-160`        |
+| ❌ Zustand/Redux                | React state 够用                   | `CLAUDE.md:161-176`        |
+| ❌ 手动修改版本号               | 必须使用 `scripts/bump-version.js` | `CLAUDE.md:577-602`        |
+| ❌ 其他图标库                   | 统一使用 lucide-react              | `CLAUDE.md:527-535`        |
 
 #### 4. 功能开发验证清单
 
@@ -995,6 +1045,7 @@ Step 5: 检查代码复杂度
 - 正在手动修改 package.json 版本号（必须使用 `scripts/bump-version.js`）
 
 **停止后的操作**：
+
 1. 重新阅读对应的设计文档
 2. 理解为什么这个方案被拒绝
 3. 找到文档中推荐的正确方案
@@ -1020,17 +1071,20 @@ Step 5: 检查代码复杂度
 # 会话恢复检查
 
 ## 1. 文档阅读确认
+
 - [ ] docs/需求分析.md - 已阅读，理解拒绝的需求
 - [ ] docs/功能清单.md - 已阅读，确认功能边界
 - [ ] docs/技术选型.md - 已阅读，确认技术约束
 - [ ] docs/技术架构.md - 已阅读，理解模块设计
 
 ## 2. 当前任务确认
+
 - 任务：[描述当前任务]
 - 功能清单位置：[引用文档章节]
 - 实现依据：[引用架构文档]
 
 ## 3. 禁止项检查
+
 - [ ] 不使用 fs-extra
 - [ ] 不使用 dotenv
 - [ ] 不分离配置文件
@@ -1043,6 +1097,7 @@ Step 5: 检查代码复杂度
 - [ ] 不手动修改版本号（必须使用 `scripts/bump-version.js`）
 
 ## 4. 开始开发
+
 ✅ 所有检查通过，开始编码
 ```
 
@@ -1051,12 +1106,14 @@ Step 5: 检查代码复杂度
 ## 参考文档
 
 **必读文档**（开发前强制阅读）：
+
 1. **需求分析**：`docs/需求分析.md` - 理解核心问题和拒绝的需求
 2. **功能清单**：`docs/功能清单.md` - 确认功能范围和禁止项
 3. **技术选型**：`docs/技术选型.md` - 确认技术栈和拒绝项
 4. **技术架构**：`docs/技术架构.md` - 理解模块设计和数据流
 
 **快速索引**：
+
 - 拒绝的依赖：`docs/技术选型.md:755-765`
 - 拒绝的架构：`docs/技术选型.md:767-774`
 - 拒绝的需求：`docs/需求分析.md:38-100`

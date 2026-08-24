@@ -35,3 +35,12 @@ coverage/
 *.tmp
 *.bak
 .history
+
+# CCB runtime
+.ccb/*
+!.ccb/ccb.config
+!.ccb/ccb_memory.md
+!.ccb/agents/
+!.ccb/agents/*/
+.ccb/agents/*/*
+!.ccb/agents/*/memory.md

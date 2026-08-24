@@ -15,6 +15,7 @@ export {
   type EditProviderInput,
   type AddPresetInput,
   type EditPresetInput,
+  type ToolModelConfig,
 } from '@anyaitools/types'
 
 import type {
@@ -25,6 +26,7 @@ import type {
   EditProviderInput,
   AddPresetInput,
   EditPresetInput,
+  ToolModelConfig,
 } from '@anyaitools/types'
 
 /**
@@ -36,6 +38,7 @@ export interface InternalPresetTemplate {
   baseUrl: string
   description: string
   model?: string
+  modelConfig?: ToolModelConfig
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }

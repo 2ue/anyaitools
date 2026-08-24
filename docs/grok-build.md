@@ -65,6 +65,49 @@ aat gk clone [source-name] [new-name]
 aat gk remove [name]
 ```
 
+## 模型切换
+
+### 原生方式
+
+官方内置模型只需要切换 `[models].default`：
+
+```toml
+[models]
+default = "grok-build"
+```
+
+自定义模型需要同时配置 alias 和模型节点：
+
+```toml
+[models]
+default = "custom"
+
+[model.custom]
+model = "model-id"
+base_url = "https://gateway.example.com"
+api_backend = "responses"
+```
+
+只想临时切换本次运行时，可使用 Grok Build 的 `-m` 参数。最终结果还可能受到
+`GROK_DEFAULT_MODEL`、企业 `requirements.toml` 和其他环境变量影响，因此切换后
+请运行 `grok inspect`。
+
+搜索、摘要、图片描述等能力可能有各自的模型设置；它们不等于
+`[models].default`，也不会因为主模型切换而自动变成同一个模型。
+
+### 使用 AnyAI Tools
+
+```bash
+aat gk use <name>
+aat gk edit <name> --model newer-model
+aat gk current
+grok inspect
+```
+
+AnyAI Tools 会把自定义模型写入稳定 alias，并同步更新 `models.default`。官方内置
+模式只写 `models.default = "grok-build"`，不会伪造一个自定义端点。模型、Base URL、
+API backend 和 backend search 都由同一条 provider 记录管理。
+
 官方预设：
 
 ```bash
