@@ -32,6 +32,10 @@ export default function CloneMCPModal({
     message: '',
     type: 'info',
   })
+  const serverSummary =
+    server.transport.type === 'stdio'
+      ? `${server.transport.command} ${server.transport.args.join(' ')}`.trim()
+      : server.transport.url
 
   // 检查名称是否重复
   const checkNameConflict = (inputName: string): boolean => {
@@ -100,9 +104,7 @@ export default function CloneMCPModal({
               <span className="font-medium">源服务器</span>
             </div>
             <p className="text-base font-medium text-gray-900">{server.name}</p>
-            <code className="text-xs text-gray-600 mt-1 block">
-              {server.command} {server.args.join(' ')}
-            </code>
+            <code className="text-xs text-gray-600 mt-1 block">{serverSummary}</code>
           </div>
 
           {/* 新名称输入 */}

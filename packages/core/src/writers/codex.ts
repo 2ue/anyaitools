@@ -375,7 +375,7 @@ function writeCodexConfigMerge(provider: Provider): void {
   const resolvedProviderKey = resolveCodexProviderKey(provider)
   const existingProviderKey =
     typeof existingConfig.model_provider === 'string' && existingConfig.model_provider.trim()
-      ? existingConfig.model_provider
+      ? existingConfig.model_provider.trim()
       : undefined
   const providerKey =
     getCodexSettings().preserveProviderName && existingProviderKey

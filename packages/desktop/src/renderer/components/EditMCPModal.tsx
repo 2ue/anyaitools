@@ -6,9 +6,12 @@ import { AlertDialog } from './dialogs'
 
 interface MCPFormData {
   name: string
+  transportType: 'stdio' | 'sse' | 'streamable-http'
   command: string
   args: string
   env: string
+  url: string
+  headers: string
   description: string
 }
 
@@ -58,19 +61,27 @@ export default function EditMCPModal({
         }
       }
 
-      // 构造 EditProviderInput
-      // 映射：command → baseUrl, args → apiKey (space-separated), env + description → model (JSON)
+      const transport =
+        formData.transportType === 'stdio'
+          ? {
+              type: 'stdio' as const,
+              command: formData.command,
+              args: argsArray,
+              ...(envObject ? { env: envObject } : {}),
+            }
+          : {
+              type: formData.transportType,
+              url: formData.url,
+              ...(formData.headers ? { headers: JSON.parse(formData.headers) } : {}),
+            }
+
       const updates = {
         name: formData.name,
-        baseUrl: formData.command,
-        apiKey: argsArray.join(' '),
-        model: JSON.stringify({
-          env: envObject,
-          description: formData.description,
-        }),
+        transport,
+        description: formData.description || undefined,
       }
 
-      await window.electronAPI.mcp.editServer(server.id, updates)
+      await window.electronAPI.mcp.editCanonicalServer(server.id, updates)
       onSubmit()
       onClose()
       onSuccess?.('编辑成功')

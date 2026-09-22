@@ -127,22 +127,54 @@ const TOOL_CONFIGS: Record<ToolType, ToolConfigMapping> = {
     },
     customSaver: (config: ToolConfig): void => {
       const mcpConfig = loadMCPConfig()
+      const previousManagedNames = Object.fromEntries(
+        (['claude', 'codex', 'gemini', 'opencode', 'openclaw', 'grok'] as const).map((app) => [
+          app,
+          [...(mcpConfig.managedServerNames[app] || [])],
+        ])
+      ) as typeof mcpConfig.managedServerNames
+
       // 将 Provider[] 转换为 MCPServer[]，保留 enabledApps 等字段
       mcpConfig.servers = config.providers.map((provider) => {
-        // 查找原有的 server 以保留 enabledApps
+        // 查找原有的 server 以保留工具开关和 remote transport
         const existingServer = mcpConfig.servers.find((s) => s.id === provider.id)
         const mcpServer = providerToMCPServer(provider)
-        // 保留原有的 enabledApps，如果不存在则使用新的默认值
+        if (
+          existingServer &&
+          existingServer.transport.type !== 'stdio' &&
+          provider.baseUrl === ''
+        ) {
+          mcpServer.transport = existingServer.transport
+          mcpServer.command = existingServer.command
+          mcpServer.args = existingServer.args
+          mcpServer.env = existingServer.env
+        }
+        // 保留原有的工具开关，如果不存在则使用新的默认值
         if (existingServer) {
+          mcpServer.enabledTools = { ...existingServer.enabledTools }
           mcpServer.enabledApps = existingServer.enabledApps
+          mcpServer.supportedTools = existingServer.supportedTools
         }
         return mcpServer
       })
-      // 更新 managedServerNames（仅支持 claude/codex/gemini）
-      for (const app of ['claude', 'codex', 'gemini'] as const) {
-        mcpConfig.managedServerNames[app] = mcpConfig.servers
-          .filter((s) => s.enabledApps.includes(app))
+      // 更新 managedServerNames，并为重命名/删除保留一次清理别名。
+      for (const app of ['claude', 'codex', 'gemini', 'opencode', 'openclaw', 'grok'] as const) {
+        const currentNames = mcpConfig.servers
+          .filter(
+            (s) =>
+              s.enabledTools[app] === true &&
+              (s.supportedTools === undefined || s.supportedTools.includes(app))
+          )
           .map((s) => s.name)
+        if (app === 'codex') {
+          mcpConfig.managedServerNames[app] = currentNames
+          continue
+        }
+        // Keep old names for one write so application writers can remove stale
+        // keys after a rename, removal, or app-disable operation.
+        mcpConfig.managedServerNames[app] = [
+          ...new Set([...currentNames, ...(previousManagedNames[app] || [])]),
+        ]
       }
       saveMCPConfig(mcpConfig)
     },

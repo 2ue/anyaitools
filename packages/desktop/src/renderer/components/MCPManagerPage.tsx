@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
-import type { MCPServer, AppType } from '@anyaitools/types'
+import type { MCPServer, MCPToolCapability, MCPToolType } from '@anyaitools/types'
 import MCPCard from './MCPCard'
 import ConfigEditorModal from './ConfigEditorModal'
 import AddMCPModal from './AddMCPModal'
 import EditMCPModal from './EditMCPModal'
 import CloneMCPModal from './CloneMCPModal'
+import MCPRegistryPanel from './MCPRegistryPanel'
 import { AlertDialog, ConfirmDialog } from './dialogs'
-import { Plus, Inbox, Search, FileCode2 } from 'lucide-react'
+import { Plus, Inbox, Search, FileCode2, Download, SlidersHorizontal } from 'lucide-react'
 import { McpIcon } from './icons/BrandIcons'
 import { BUTTON_WITH_ICON, BUTTON_STYLES } from '../styles/button'
 
 export default function MCPManagerPage() {
   const [servers, setServers] = useState<MCPServer[]>([])
+  const [capabilities, setCapabilities] = useState<MCPToolCapability[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [showConfigEditor, setShowConfigEditor] = useState(false)
@@ -49,8 +51,21 @@ export default function MCPManagerPage() {
 
   // 加载 MCP 列表
   useEffect(() => {
-    loadServers()
+    Promise.all([loadServers(), loadCapabilities()])
   }, [])
+
+  const loadCapabilities = async () => {
+    try {
+      setCapabilities(await window.electronAPI.mcp.listCapabilities())
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: '加载工具能力失败',
+        message: (error as Error).message,
+        type: 'error',
+      })
+    }
+  }
 
   const loadServers = async () => {
     try {
@@ -82,9 +97,9 @@ export default function MCPManagerPage() {
   }
 
   // 切换应用启用状态
-  const handleToggleApp = async (serverId: string, app: AppType, enabled: boolean) => {
+  const handleToggleTool = async (serverId: string, tool: MCPToolType, enabled: boolean) => {
     try {
-      await window.electronAPI.mcp.toggleApp(serverId, app, enabled)
+      await window.electronAPI.mcp.toggleApp(serverId, tool, enabled)
 
       // 更新本地状态
       setServers((prev) =>
@@ -92,9 +107,10 @@ export default function MCPManagerPage() {
           s.id === serverId
             ? {
                 ...s,
+                enabledTools: { ...s.enabledTools, [tool]: enabled },
                 enabledApps: enabled
-                  ? [...s.enabledApps, app]
-                  : s.enabledApps.filter((a) => a !== app),
+                  ? [...new Set([...(s.enabledApps || []), tool])]
+                  : (s.enabledApps || []).filter((a) => a !== tool),
               }
             : s
         )
@@ -161,6 +177,32 @@ export default function MCPManagerPage() {
     setShowAddModal(true)
   }
 
+  const handleExportJson = async () => {
+    try {
+      const content = await window.electronAPI.mcp.exportJson()
+      const blob = new Blob([content], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'mcp-servers.json'
+      anchor.click()
+      URL.revokeObjectURL(url)
+      setAlertDialog({
+        show: true,
+        title: '导出成功',
+        message: 'MCP JSON 配置已下载',
+        type: 'success',
+      })
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: '导出失败',
+        message: (error as Error).message,
+        type: 'error',
+      })
+    }
+  }
+
   // 编辑配置文件
   const handleEditConfig = async () => {
     try {
@@ -205,7 +247,12 @@ export default function MCPManagerPage() {
   const filteredServers = servers.filter(
     (s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.command.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.transport.type === 'stdio'
+        ? `${s.transport.command} ${s.transport.args.join(' ')}`
+        : s.transport.url
+      )
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       (s.description && s.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
@@ -221,83 +268,129 @@ export default function MCPManagerPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
-              <McpIcon size={28} />
-              MCP 服务器管理
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              管理 Model Context Protocol 服务器，当前共 {servers.length} 个
-              {searchQuery && ` · 搜索结果: ${filteredServers.length} 个`}
-            </p>
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="border-b border-gray-200 bg-white px-6 py-6">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+              <McpIcon size={25} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">MCP 服务器管理</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+                从目录了解 MCP 的用途和配置，再导入到本地。导入后可以为每个服务器单独选择要启用的 AI
+                工具。
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">
+                <span className="rounded-full bg-gray-100 px-2.5 py-1">
+                  已导入 {servers.length} 个
+                </span>
+                <span className="rounded-full bg-gray-100 px-2.5 py-1">默认不自动启用</span>
+                <span className="rounded-full bg-gray-100 px-2.5 py-1">支持 JSON 配置</span>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <button onClick={handleEditConfig} className={BUTTON_STYLES.icon} title="编辑配置文件">
               <FileCode2 className="w-5 h-5" />
             </button>
+            <button onClick={handleExportJson} className={BUTTON_STYLES.icon} title="导出 JSON">
+              <Download className="w-5 h-5" />
+            </button>
             <button onClick={handleAdd} className={BUTTON_WITH_ICON.primary}>
               <Plus className="w-4 h-4" />
               添加 MCP
             </button>
-          </div>
-        </div>
-
-        {/* 搜索框 */}
-        <div className="mt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索 MCP 服务器..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
           </div>
         </div>
       </div>
 
-      {/* MCP Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {servers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <Inbox className="w-16 h-16 mb-4 text-gray-400" />
-            <p className="text-lg font-medium mb-2">还没有 MCP 服务器</p>
-            <p className="text-sm text-gray-400 mb-2">
-              MCP (Model Context Protocol) 可以让 AI 工具连接外部服务
-            </p>
-            <p className="text-xs text-gray-400 mb-4">目前请使用 CLI 命令添加: aat mcp add</p>
-            <button onClick={handleAdd} className={BUTTON_WITH_ICON.primary}>
-              <Plus className="w-4 h-4" />
-              添加 MCP
-            </button>
-          </div>
-        ) : filteredServers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <Inbox className="w-16 h-16 mb-4 text-gray-400" />
-            <p className="text-lg font-medium mb-2">没有匹配的 MCP</p>
-            <p className="text-sm text-gray-400 mb-4">尝试使用其他关键词搜索</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredServers.map((server) => (
-              <MCPCard
-                key={server.id}
-                server={server}
-                enabledApps={server.enabledApps}
-                onToggleApp={(app, enabled) => handleToggleApp(server.id, app, enabled)}
-                onEdit={() => handleEdit(server)}
-                onClone={() => handleClone(server)}
-                onDelete={() => handleDelete(server)}
+      <MCPRegistryPanel
+        onServersChanged={() => void loadServers()}
+        onImported={(message) =>
+          setAlertDialog({
+            show: true,
+            title: '目录导入成功',
+            message,
+            type: 'success',
+          })
+        }
+        onError={(message) =>
+          setAlertDialog({
+            show: true,
+            title: 'MCP 目录操作失败',
+            message,
+            type: 'error',
+          })
+        }
+      />
+
+      <section className="mx-4 mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm md:mx-6">
+        <div className="border-b border-gray-200 bg-gray-50/80 px-5 py-4 md:px-6">
+          <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+            <div className="flex items-start gap-3">
+              <SlidersHorizontal className="mt-0.5 h-5 w-5 text-blue-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">已导入的 MCP</h2>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  在这里管理连接配置，并为每个 MCP 单独开启或关闭 Claude、Codex、Gemini、Grok
+                  等工具。
+                </p>
+              </div>
+            </div>
+            <div className="relative w-full lg:max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索已导入的 MCP..."
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-            ))}
+            </div>
           </div>
-        )}
-      </div>
+          {searchQuery && (
+            <p className="mt-3 text-xs text-gray-500">
+              当前显示 {filteredServers.length} 个结果，共 {servers.length} 个已导入 MCP
+            </p>
+          )}
+        </div>
+        <div className="p-5 md:p-6">
+          {servers.length === 0 ? (
+            <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-5 text-center text-gray-500">
+              <Inbox className="mb-4 h-12 w-12 text-gray-300" />
+              <p className="mb-2 text-base font-semibold text-gray-800">还没有已导入的 MCP</p>
+              <p className="max-w-md text-sm leading-6 text-gray-500">
+                目录里的条目只是可查看的服务说明和配置模板。确认用途后，点击详情中的“一键导入”，再回来为工具开关。
+              </p>
+              <button onClick={handleAdd} className={`${BUTTON_WITH_ICON.primary} mt-5`}>
+                <Plus className="w-4 h-4" />
+                手动添加 MCP
+              </button>
+            </div>
+          ) : filteredServers.length === 0 ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center text-gray-500">
+              <Inbox className="mb-4 h-12 w-12 text-gray-300" />
+              <p className="mb-2 text-base font-semibold text-gray-800">没有匹配的 MCP</p>
+              <p className="text-sm text-gray-500">尝试使用其他名称、连接地址或描述搜索</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredServers.map((server) => (
+                <MCPCard
+                  key={server.id}
+                  server={server}
+                  capabilities={capabilities}
+                  onToggleTool={(tool, enabled) => handleToggleTool(server.id, tool, enabled)}
+                  onEdit={() => handleEdit(server)}
+                  onClone={() => handleClone(server)}
+                  onDelete={() => handleDelete(server)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Dialogs */}
       <AlertDialog

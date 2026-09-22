@@ -21,7 +21,7 @@ if (isTest) {
 let anyaitoolsDir: string = path.join(rootDir, '.anyaitools')
 let codexDir: string = path.join(rootDir, '.codex')
 let claudeDir: string = path.join(rootDir, '.claude')
-const geminiDir: string = path.join(rootDir, '.gemini')
+let geminiDir: string = path.join(rootDir, '.gemini')
 let opencodeDir: string = path.join(rootDir, '.config', 'opencode')
 let openclawDir: string = path.join(rootDir, '.openclaw')
 const configuredGrokHome = process.env.GROK_HOME?.trim()
@@ -170,6 +170,16 @@ export function getGrokConfigPath(): string {
   return path.join(grokDir, 'config.toml')
 }
 
+/** MCP 目录来源配置文件。 */
+export function getMCPRegistrySourcesPath(): string {
+  return path.join(anyaitoolsDir, 'mcp-registries.json')
+}
+
+/** MCP 目录最近一次成功加载的缓存。 */
+export function getMCPRegistryCachePath(): string {
+  return path.join(anyaitoolsDir, 'mcp-registry-cache.json')
+}
+
 /**
  * 测试专用 API：设置自定义路径
  * 仅在测试环境可用，用于精确控制测试路径
@@ -178,6 +188,7 @@ export function __setTestPaths(paths: {
   anyaitools?: string
   codex?: string
   claude?: string
+  gemini?: string
   opencode?: string
   openclaw?: string
   grok?: string
@@ -188,6 +199,7 @@ export function __setTestPaths(paths: {
   if (paths.anyaitools) anyaitoolsDir = paths.anyaitools
   if (paths.codex) codexDir = paths.codex
   if (paths.claude) claudeDir = paths.claude
+  if (paths.gemini) geminiDir = paths.gemini
   if (paths.opencode) opencodeDir = paths.opencode
   if (paths.openclaw) openclawDir = paths.openclaw
   if (paths.grok) grokDir = paths.grok

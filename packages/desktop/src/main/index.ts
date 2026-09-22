@@ -58,6 +58,20 @@ import {
   deleteHistoryEntry,
   clearProjectHistory,
   loadMCPConfig,
+  addMCPServer,
+  editMCPServer,
+  cloneMCPServer,
+  parseMCPJson,
+  validateMCPJson,
+  importMCPJson,
+  exportMCPJson,
+  fetchMCPRegistry,
+  listMCPToolCapabilities,
+  loadMCPRegistrySources,
+  addMCPRegistrySource,
+  removeMCPRegistrySource,
+  refreshMCPRegistrySource,
+  searchMCPRegistry,
   toggleMCPForApp,
   getMCPAppStatus,
   getMCPConfigPath,
@@ -74,7 +88,15 @@ import type {
   SyncConfig,
   AppType,
 } from '@anyaitools/core'
-import type { ModelCatalogRequest, ModelToolType } from '@anyaitools/types'
+import type {
+  ModelCatalogRequest,
+  ModelToolType,
+  MCPServerInput,
+  MCPImportOptions,
+  MCPExportOptions,
+  MCPRegistryQuery,
+  MCPRegistrySourceInput,
+} from '@anyaitools/types'
 
 // 设置日志文件（生产模式）
 const isDev = process.env.NODE_ENV === 'development'
@@ -1502,6 +1524,90 @@ ipcMain.handle('mcp:list-servers', async () => {
   }
 })
 
+ipcMain.handle('mcp:list-capabilities', async () => {
+  try {
+    return listMCPToolCapabilities()
+  } catch (error) {
+    throw new Error(`加载 MCP 工具能力失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:validate-json', async (_event, input: string | object) => {
+  return validateMCPJson(input)
+})
+
+ipcMain.handle('mcp:parse-json', async (_event, input: string | object) => {
+  return parseMCPJson(input)
+})
+
+ipcMain.handle(
+  'mcp:import-json',
+  async (_event, input: string | object, options?: MCPImportOptions) => {
+    try {
+      return importMCPJson(input, options)
+    } catch (error) {
+      throw new Error(`导入 MCP JSON 失败：${(error as Error).message}`)
+    }
+  }
+)
+
+ipcMain.handle('mcp:export-json', async (_event, options?: MCPExportOptions) => {
+  try {
+    return exportMCPJson(options)
+  } catch (error) {
+    throw new Error(`导出 MCP JSON 失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:fetch-registry', async (_event, url: string) => {
+  try {
+    return await fetchMCPRegistry(url)
+  } catch (error) {
+    throw new Error(`加载 MCP 社区目录失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:list-registry-sources', async () => {
+  try {
+    return loadMCPRegistrySources()
+  } catch (error) {
+    throw new Error(`加载 MCP 目录来源失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:add-registry-source', async (_event, input: MCPRegistrySourceInput) => {
+  try {
+    return addMCPRegistrySource(input)
+  } catch (error) {
+    throw new Error(`添加 MCP 目录来源失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:remove-registry-source', async (_event, id: string) => {
+  try {
+    removeMCPRegistrySource(id)
+    return { success: true }
+  } catch (error) {
+    throw new Error(`删除 MCP 目录来源失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:refresh-registry-source', async (_event, id: string) => {
+  try {
+    return await refreshMCPRegistrySource(id)
+  } catch (error) {
+    throw new Error(`刷新 MCP 目录失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle('mcp:search-registry', async (_event, query?: MCPRegistryQuery) => {
+  try {
+    return await searchMCPRegistry(query)
+  } catch (error) {
+    throw new Error(`搜索 MCP 目录失败：${(error as Error).message}`)
+  }
+})
+
 // 切换 MCP 在某个应用上的启用状态
 ipcMain.handle('mcp:toggle-app', async (_event, mcpId: string, app: AppType, enabled: boolean) => {
   try {
@@ -1531,6 +1637,25 @@ ipcMain.handle('mcp:add-server', async (_event, input: AddProviderInput) => {
   }
 })
 
+ipcMain.handle('mcp:add-canonical-server', async (_event, input: MCPServerInput) => {
+  try {
+    return addMCPServer(input)
+  } catch (error) {
+    throw new Error(`添加 MCP 失败：${(error as Error).message}`)
+  }
+})
+
+ipcMain.handle(
+  'mcp:edit-canonical-server',
+  async (_event, id: string, updates: Partial<MCPServerInput>) => {
+    try {
+      return editMCPServer(id, updates)
+    } catch (error) {
+      throw new Error(`编辑 MCP 失败：${(error as Error).message}`)
+    }
+  }
+)
+
 // 获取单个 MCP 服务器
 ipcMain.handle('mcp:get-server', async (_event, id: string) => {
   try {
@@ -1554,8 +1679,7 @@ ipcMain.handle('mcp:edit-server', async (_event, id: string, updates: EditProvid
 // 克隆 MCP 服务器
 ipcMain.handle('mcp:clone-server', async (_event, sourceId: string, newName: string) => {
   try {
-    const manager = createMCPManager()
-    return manager.clone(sourceId, newName)
+    return cloneMCPServer(sourceId, newName)
   } catch (error) {
     throw new Error(`克隆 MCP 失败：${(error as Error).message}`)
   }

@@ -3,6 +3,7 @@ import { getAnyAIToolsDir } from './paths.js'
 import { fileExists, readJSON, writeJSON } from './utils/file.js'
 
 export interface CodexSettings {
+  /** Keep the active config.toml model_provider key stable during merge writes. */
   preserveProviderName: boolean
 }
 
@@ -14,7 +15,8 @@ interface CodexStore {
 }
 
 const DEFAULT_CODEX_SETTINGS: CodexSettings = {
-  preserveProviderName: false,
+  // Preserve session identity by default; users can explicitly opt out.
+  preserveProviderName: true,
 }
 
 function getCodexStorePath(): string {
@@ -36,9 +38,11 @@ function loadCodexStore(): CodexStore {
 export function getCodexSettings(): CodexSettings {
   const config = loadCodexStore()
   const settings = isRecord(config.settings) ? config.settings : {}
+  const preserveProviderName = settings.preserveProviderName
 
   return {
-    preserveProviderName: settings.preserveProviderName === true,
+    ...DEFAULT_CODEX_SETTINGS,
+    ...(typeof preserveProviderName === 'boolean' ? { preserveProviderName } : {}),
   }
 }
 

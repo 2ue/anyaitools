@@ -310,7 +310,8 @@ function applyOpenClawDefaults(
             ? 'off'
             : undefined
   if (thinkingDefault) {
-    ;(nextDefaults as Record<string, unknown>).thinkingDefault = thinkingDefault
+    const defaultsRecord = nextDefaults as Record<string, unknown>
+    defaultsRecord.thinkingDefault = thinkingDefault
   }
 
   const nextConfig: OpenClawConfigFile = {

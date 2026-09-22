@@ -15,9 +15,12 @@ import { BUTTON_STYLES } from '../styles/button'
 
 interface MCPFormData {
   name: string
+  transportType: 'stdio' | 'sse' | 'streamable-http'
   command: string
   args: string
   env: string
+  url: string
+  headers: string
   description: string
 }
 
@@ -39,34 +42,58 @@ export default function MCPForm({
   onCancel,
 }: Props) {
   const [name, setName] = useState('')
+  const [transportType, setTransportType] = useState<MCPFormData['transportType']>('stdio')
   const [command, setCommand] = useState('')
   const [args, setArgs] = useState('') // 字符串形式，换行分隔
   const [env, setEnv] = useState('') // JSON 字符串
+  const [url, setUrl] = useState('')
+  const [headers, setHeaders] = useState('')
   const [description, setDescription] = useState('')
   const [nameError, setNameError] = useState('')
   const [envError, setEnvError] = useState('')
+  const [headersError, setHeadersError] = useState('')
 
   useEffect(() => {
     if (server) {
       // 编辑/克隆模式
       setName(server.name)
-      setCommand(server.command)
-      setArgs(server.args.join('\n'))
-      setEnv(server.env ? JSON.stringify(server.env, null, 2) : '')
+      setTransportType(server.transport.type === 'http' ? 'streamable-http' : server.transport.type)
+      setCommand(server.transport.type === 'stdio' ? server.transport.command : '')
+      setArgs(server.transport.type === 'stdio' ? server.transport.args.join('\n') : '')
+      setEnv(
+        server.transport.type === 'stdio' && server.transport.env
+          ? JSON.stringify(server.transport.env, null, 2)
+          : ''
+      )
+      setUrl(server.transport.type === 'stdio' ? '' : server.transport.url)
+      setHeaders(
+        server.transport.type === 'stdio' || !server.transport.headers
+          ? ''
+          : JSON.stringify(server.transport.headers, null, 2)
+      )
+      setHeadersError('')
       setDescription(server.description || '')
     } else if (preset) {
       // 预设模式
       setName(preset.name)
+      setTransportType('stdio')
       setCommand(preset.command)
       setArgs(preset.args.join('\n'))
       setEnv('')
+      setUrl('')
+      setHeaders('')
+      setHeadersError('')
       setDescription(preset.description)
     } else {
       // 空白模式
       setName('')
+      setTransportType('stdio')
       setCommand('')
       setArgs('')
       setEnv('')
+      setUrl('')
+      setHeaders('')
+      setHeadersError('')
       setDescription('')
     }
   }, [server, preset])
@@ -130,13 +157,28 @@ export default function MCPForm({
     if (!validateEnv(env)) {
       return
     }
+    let parsedHeaders: string | undefined
+    if (headers.trim()) {
+      try {
+        const value = JSON.parse(headers)
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error()
+        parsedHeaders = JSON.stringify(value)
+        setHeadersError('')
+      } catch {
+        setHeadersError('请求头必须是有效的 JSON 对象')
+        return
+      }
+    }
 
     // 构造提交数据
     onSubmit({
       name: name.trim(),
+      transportType,
       command: command.trim(),
       args: args.trim(),
       env: env.trim(),
+      url: url.trim(),
+      headers: parsedHeaders || '',
       description: description.trim(),
     })
   }
@@ -170,51 +212,101 @@ export default function MCPForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          启动命令 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">传输类型</label>
+        <select
+          value={transportType}
+          onChange={(e) => setTransportType(e.target.value as MCPFormData['transportType'])}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="npx"
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">启动 MCP 服务器的命令，如 npx、node 等</p>
+        >
+          <option value="stdio">本地进程（stdio）</option>
+          <option value="sse">远程 SSE</option>
+          <option value="streamable-http">远程 Streamable HTTP</option>
+        </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          命令参数 <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          value={args}
-          onChange={(e) => setArgs(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-          placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;/path/to/allowed/files"
-          rows={4}
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">每行一个参数</p>
-      </div>
+      {transportType === 'stdio' ? (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              启动命令 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="npx"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">启动 MCP 服务器的命令，如 npx、node 等</p>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          环境变量 <span className="text-gray-500 text-xs">(可选)</span>
-        </label>
-        <textarea
-          value={env}
-          onChange={handleEnvChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm ${
-            envError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-          }`}
-          placeholder='{\n  "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_...",\n  "API_KEY": "your-key"\n}'
-          rows={4}
-        />
-        {envError && <p className="text-sm text-red-600 mt-1">{envError}</p>}
-        <p className="text-xs text-gray-500 mt-1">JSON 格式的环境变量，如需配置 API Key 等</p>
-      </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">命令参数</label>
+            <textarea
+              value={args}
+              onChange={(e) => setArgs(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;/path/to/allowed/files"
+              rows={4}
+            />
+            <p className="text-xs text-gray-500 mt-1">每行一个参数</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              环境变量 <span className="text-gray-500 text-xs">(可选)</span>
+            </label>
+            <textarea
+              value={env}
+              onChange={handleEnvChange}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm ${
+                envError
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
+              placeholder='{\n  "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_...",\n  "API_KEY": "your-key"\n}'
+              rows={4}
+            />
+            {envError && <p className="text-sm text-red-600 mt-1">{envError}</p>}
+            <p className="text-xs text-gray-500 mt-1">JSON 格式的环境变量，如需配置 API Key 等</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              MCP 地址 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="https://mcp.example.com/mcp"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">请求头（可选）</label>
+            <textarea
+              value={headers}
+              onChange={(e) => {
+                setHeaders(e.target.value)
+                setHeadersError('')
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm ${
+                headersError
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
+              placeholder='{\n  "Authorization": "Bearer ..."\n}'
+              rows={4}
+            />
+            {headersError && <p className="text-sm text-red-600 mt-1">{headersError}</p>}
+          </div>
+        </>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">

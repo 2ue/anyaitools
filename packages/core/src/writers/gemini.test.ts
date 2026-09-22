@@ -16,6 +16,7 @@ describe('Gemini Writer', () => {
       anyaitools: path.join(testDir, '.anyaitools'),
       codex: path.join(testDir, '.codex'),
       claude: path.join(testDir, '.claude'),
+      gemini: path.join(testDir, '.gemini'),
     })
 
     const settingsPath = getGeminiSettingsPath()
@@ -83,10 +84,53 @@ describe('Gemini Writer', () => {
 
     writeGeminiConfig(provider)
 
+    const settings = JSON.parse(fs.readFileSync(getGeminiSettingsPath(), 'utf-8'))
+    expect(settings.security?.auth?.selectedType).toBe('oauth-personal')
+
     const envPath = getGeminiEnvPath()
     const envContent = fs.readFileSync(envPath, 'utf-8')
     // 合并 meta.env 中的 GEMINI_MODEL
     expect(envContent).toContain('GEMINI_MODEL=gemini-2.5-flash')
+  })
+
+  it('switches auth mode when replacing OAuth with an API-key provider', () => {
+    const settingsPath = getGeminiSettingsPath()
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true })
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({ security: { auth: { selectedType: 'oauth-personal' } } }),
+      'utf-8'
+    )
+
+    const provider: Provider = {
+      id: 'gemini-api-key-switch',
+      name: 'API Key',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-api-key',
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    writeGeminiConfig(provider)
+
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+    expect(settings.security?.auth?.selectedType).toBe('gemini-api-key')
+  })
+
+  it('ignores malformed auth metadata instead of failing the config write', () => {
+    const provider: Provider = {
+      id: 'gemini-invalid-auth-meta',
+      name: 'Malformed Metadata',
+      baseUrl: 'https://example.com',
+      apiKey: 'sk-api-key',
+      model: JSON.stringify({ authType: { unsupported: true } }),
+      createdAt: Date.now(),
+      lastModified: Date.now(),
+    }
+
+    expect(() => writeGeminiConfig(provider)).not.toThrow()
+    const settings = JSON.parse(fs.readFileSync(getGeminiSettingsPath(), 'utf-8'))
+    expect(settings.security?.auth?.selectedType).toBe('gemini-api-key')
   })
 
   it('should fallback GEMINI_MODEL from defaultModel when not provided in env', () => {

@@ -72,12 +72,51 @@ export {
   mcpServerToProvider,
   toggleMCPForApp,
   getMCPAppStatus,
+  getMCPToolCapability,
+  listMCPToolCapabilities,
+  addMCPServer,
+  editMCPServer,
+  cloneMCPServer,
+  parseMCPJson,
+  validateMCPJson,
+  importMCPJson,
+  exportMCPJson,
+  fetchMCPRegistry,
   migrateMCPConfig,
   getMCPConfigPath,
   type MCPServer,
   type MCPConfig,
   type AppType,
+  type MCPToolType,
+  type MCPToolCapability,
+  type MCPTransport,
+  type MCPTransportType,
+  type MCPServerInput,
+  type MCPImportOptions,
+  type MCPImportResult,
+  type MCPValidationResult,
+  type MCPExportOptions,
+  type MCPRegistry,
 } from './writers/mcp.js'
+
+export {
+  listBuiltInMCPRegistrySources,
+  loadMCPRegistrySources,
+  addMCPRegistrySource,
+  removeMCPRegistrySource,
+  refreshMCPRegistrySource,
+  refreshAllMCPRegistrySources,
+  getCachedMCPRegistrySnapshots,
+  searchMCPRegistry,
+} from './mcp-registry.js'
+export type {
+  MCPRegistryEntry,
+  MCPRegistryParser,
+  MCPRegistryQuery,
+  MCPRegistrySnapshot,
+  MCPRegistrySource,
+  MCPRegistrySourceInput,
+} from '@anyaitools/types'
 
 // Migration
 export { migrateConfig, rollbackMigration, migrateV2ToV3, validateMigration } from './migrate.js'

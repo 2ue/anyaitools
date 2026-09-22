@@ -27,7 +27,21 @@ import type {
   AppType,
   CodexSettings,
 } from '@anyaitools/core'
-import type { ModelCatalog, ModelCatalogRequest } from '@anyaitools/types'
+import type {
+  ModelCatalog,
+  ModelCatalogRequest,
+  MCPServerInput,
+  MCPImportOptions,
+  MCPExportOptions,
+  MCPToolCapability,
+  MCPImportResult,
+  MCPValidationResult,
+  MCPRegistry,
+  MCPRegistryQuery,
+  MCPRegistrySnapshot,
+  MCPRegistrySource,
+  MCPRegistrySourceInput,
+} from '@anyaitools/types'
 
 // ============================================================================
 // Codex API
@@ -465,10 +479,23 @@ export interface MCPAPI {
   listServers: () => Promise<MCPServer[]>
   getServer: (id: string) => Promise<Provider | undefined>
   editServer: (id: string, updates: EditProviderInput) => Promise<Provider>
-  cloneServer: (sourceId: string, newName: string) => Promise<Provider>
+  cloneServer: (sourceId: string, newName: string) => Promise<MCPServer>
   removeServer: (id: string) => Promise<{ success: boolean }>
   toggleApp: (mcpId: string, app: AppType, enabled: boolean) => Promise<{ success: boolean }>
   getAppStatus: (mcpId: string) => Promise<Record<AppType, boolean>>
+  listCapabilities: () => Promise<MCPToolCapability[]>
+  addCanonicalServer: (input: MCPServerInput) => Promise<MCPServer>
+  editCanonicalServer: (id: string, updates: Partial<MCPServerInput>) => Promise<MCPServer>
+  validateJson: (input: string | object) => Promise<MCPValidationResult>
+  parseJson: (input: string | object) => Promise<MCPImportResult>
+  importJson: (input: string | object, options?: MCPImportOptions) => Promise<MCPImportResult>
+  exportJson: (options?: MCPExportOptions) => Promise<string>
+  fetchRegistry: (url: string) => Promise<MCPRegistry>
+  listRegistrySources: () => Promise<MCPRegistrySource[]>
+  addRegistrySource: (input: MCPRegistrySourceInput) => Promise<MCPRegistrySource>
+  removeRegistrySource: (id: string) => Promise<{ success: boolean }>
+  refreshRegistrySource: (id: string) => Promise<MCPRegistrySnapshot>
+  searchRegistry: (query?: MCPRegistryQuery) => Promise<MCPRegistrySnapshot[]>
 }
 
 const mcpAPI: MCPAPI = {
@@ -480,6 +507,20 @@ const mcpAPI: MCPAPI = {
   removeServer: (id) => ipcRenderer.invoke('mcp:remove-server', id),
   toggleApp: (mcpId, app, enabled) => ipcRenderer.invoke('mcp:toggle-app', mcpId, app, enabled),
   getAppStatus: (mcpId) => ipcRenderer.invoke('mcp:get-app-status', mcpId),
+  listCapabilities: () => ipcRenderer.invoke('mcp:list-capabilities'),
+  addCanonicalServer: (input) => ipcRenderer.invoke('mcp:add-canonical-server', input),
+  editCanonicalServer: (id, updates) =>
+    ipcRenderer.invoke('mcp:edit-canonical-server', id, updates),
+  validateJson: (input) => ipcRenderer.invoke('mcp:validate-json', input),
+  parseJson: (input) => ipcRenderer.invoke('mcp:parse-json', input),
+  importJson: (input, options) => ipcRenderer.invoke('mcp:import-json', input, options),
+  exportJson: (options) => ipcRenderer.invoke('mcp:export-json', options),
+  fetchRegistry: (url) => ipcRenderer.invoke('mcp:fetch-registry', url),
+  listRegistrySources: () => ipcRenderer.invoke('mcp:list-registry-sources'),
+  addRegistrySource: (input) => ipcRenderer.invoke('mcp:add-registry-source', input),
+  removeRegistrySource: (id) => ipcRenderer.invoke('mcp:remove-registry-source', id),
+  refreshRegistrySource: (id) => ipcRenderer.invoke('mcp:refresh-registry-source', id),
+  searchRegistry: (query) => ipcRenderer.invoke('mcp:search-registry', query),
 }
 
 // ============================================================================

@@ -1,56 +1,60 @@
 import { useState } from 'react'
-import type { MCPServer, AppType } from '@anyaitools/types'
-import { Edit2, Trash2, Copy, Terminal, Settings } from 'lucide-react'
-import { ClaudeIcon, OpenAIIcon, GeminiIcon, McpIcon } from './icons/BrandIcons'
+import type { MCPServer, MCPToolCapability, MCPToolType } from '@anyaitools/types'
+import { Edit2, Trash2, Copy, Terminal, Globe2, Settings } from 'lucide-react'
+import {
+  ClaudeIcon,
+  OpenAIIcon,
+  GeminiIcon,
+  OpenCodeIcon,
+  OpenClawIcon,
+  GrokIcon,
+  McpIcon,
+} from './icons/BrandIcons'
 import { CARD_STYLES } from '../styles/card'
 
-// 应用信息配置
-const APP_INFO: Record<
-  AppType,
-  {
-    name: string
-    icon: React.ElementType
-    supported: boolean
-  }
-> = {
-  claude: {
-    name: 'Claude Code',
-    icon: ClaudeIcon,
-    supported: true,
-  },
-  codex: {
-    name: 'Codex',
-    icon: OpenAIIcon,
-    supported: false, // Codex 暂不支持 MCP
-  },
-  gemini: {
-    name: 'Gemini CLI',
-    icon: GeminiIcon,
-    supported: true,
-  },
+const APP_ICONS: Record<MCPToolType, React.ElementType> = {
+  claude: ClaudeIcon,
+  codex: OpenAIIcon,
+  gemini: GeminiIcon,
+  opencode: OpenCodeIcon,
+  openclaw: OpenClawIcon,
+  grok: GrokIcon,
 }
 
 interface MCPCardProps {
   server: MCPServer
-  enabledApps: AppType[]
-  onToggleApp: (app: AppType, enabled: boolean) => void
+  capabilities: MCPToolCapability[]
+  onToggleTool: (tool: MCPToolType, enabled: boolean) => void
   onEdit: () => void
   onClone: () => void
   onDelete: () => void
 }
 
+function getEnabledTools(server: MCPServer): MCPToolType[] {
+  if (server.enabledTools) {
+    return Object.entries(server.enabledTools)
+      .filter(([, enabled]) => enabled)
+      .map(([tool]) => tool as MCPToolType)
+  }
+  return server.enabledApps || []
+}
+
 export default function MCPCard({
   server,
-  enabledApps,
-  onToggleApp,
+  capabilities,
+  onToggleTool,
   onEdit,
   onClone,
   onDelete,
 }: MCPCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-
-  const enabledCount = enabledApps.length
-  const hasAnyEnabled = enabledCount > 0
+  const enabledTools = getEnabledTools(server)
+  const transport = server.transport
+  const isRemote = transport.type !== 'stdio'
+  const command =
+    transport.type === 'stdio'
+      ? `${transport.command} ${transport.args.join(' ')}`.trim()
+      : transport.url
 
   return (
     <div
@@ -58,16 +62,16 @@ export default function MCPCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <McpIcon size={20} />
-          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+          <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
             {server.name}
           </h3>
+          <span className="text-[10px] uppercase tracking-wide text-gray-500 border border-gray-200 rounded px-1.5 py-0.5">
+            {isRemote ? transport.type : 'stdio'}
+          </span>
         </div>
-
-        {/* Actions */}
         <div className={`flex gap-1 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
           <button
             onClick={onEdit}
@@ -93,86 +97,87 @@ export default function MCPCard({
         </div>
       </div>
 
-      {/* Command Info */}
       <div className="mb-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-          <Terminal className="w-3.5 h-3.5" />
-          <span className="font-medium">启动命令</span>
+          {isRemote ? <Globe2 className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
+          <span className="font-medium">{isRemote ? '远程地址' : '启动命令'}</span>
         </div>
         <code className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded block overflow-x-auto whitespace-nowrap">
-          {server.command} {server.args.join(' ')}
+          {command || '未配置'}
         </code>
       </div>
 
-      {/* 环境变量（如果有）*/}
-      {server.env && Object.keys(server.env).length > 0 && (
+      {transport.type === 'stdio' && transport.env && Object.keys(transport.env).length > 0 && (
         <div className="mb-4 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
             <Settings className="w-3.5 h-3.5" />
             <span className="font-medium">环境变量</span>
           </div>
-          <div className="text-xs text-gray-600">
-            {Object.keys(server.env).map((key) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="text-gray-500">{key}:</span>
-                <span className="text-gray-700 font-mono">{String(server.env![key])}</span>
-              </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(transport.env).map((key) => (
+              <span
+                key={key}
+                className="text-[11px] text-gray-600 font-mono bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5"
+              >
+                {key}
+              </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* App Toggles */}
       <div>
-        <div className="text-xs font-medium text-gray-600 mb-3">启用的应用</div>
+        <div className="flex items-center justify-between text-xs font-medium text-gray-600 mb-3">
+          <span>按工具启用</span>
+          <span className="text-gray-400">{enabledTools.length} 个工具</span>
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          {(Object.keys(APP_INFO) as AppType[]).map((app) => {
-            const appInfo = APP_INFO[app]
-            const isEnabled = enabledApps.includes(app)
-            const isSupported = appInfo.supported
-            const AppIcon = appInfo.icon
-
+          {capabilities.map((capability) => {
+            const tool = capability.tool
+            const AppIcon = APP_ICONS[tool]
+            const isEnabled = enabledTools.includes(tool)
+            const isDeclaredSupported =
+              server.supportedTools === undefined || server.supportedTools.includes(tool)
+            const isSupported =
+              capability.supported &&
+              isDeclaredSupported &&
+              capability.transportTypes.includes(transport.type)
+            const unsupportedReason = !capability.supported
+              ? capability.reason
+              : !isDeclaredSupported
+                ? '该 MCP 未声明支持此工具'
+                : !capability.transportTypes.includes(transport.type)
+                  ? '当前传输类型不受支持'
+                  : capability.configPath
             return (
               <label
-                key={app}
-                className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all cursor-pointer
-                  ${
-                    !isSupported
-                      ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
-                      : isEnabled
-                        ? 'bg-blue-50 border-blue-300 hover:border-blue-400'
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                  }
-                `}
+                key={tool}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                  !isSupported
+                    ? 'bg-gray-50 border-gray-200 opacity-55 cursor-not-allowed'
+                    : isEnabled
+                      ? 'bg-blue-50 border-blue-300 hover:border-blue-400 cursor-pointer'
+                      : 'bg-white border-gray-200 hover:border-gray-300 cursor-pointer'
+                }`}
+                title={unsupportedReason}
               >
                 <input
                   type="checkbox"
                   checked={isEnabled}
                   disabled={!isSupported}
-                  onChange={(e) => onToggleApp(app, e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onChange={(event) => onToggleTool(tool, event.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                 />
                 <AppIcon size={16} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-gray-700 truncate">{appInfo.name}</div>
-                  {!isSupported && <div className="text-[10px] text-gray-400">暂不支持</div>}
-                </div>
+                <span className="text-xs font-medium text-gray-700 truncate">
+                  {capability.displayName}
+                </span>
               </label>
             )
           })}
         </div>
-
-        {/* Status */}
-        {hasAnyEnabled && (
-          <div className="mt-3 text-xs text-blue-600 flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-            已同步到 {enabledCount} 个应用
-          </div>
-        )}
       </div>
 
-      {/* Description */}
       {server.description && (
         <div className="mt-4 pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-500">{server.description}</p>

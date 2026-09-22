@@ -36,6 +36,12 @@ interface GeminiSettings {
   [key: string]: unknown
 }
 
+interface GeminiProviderMeta {
+  authType?: string
+  defaultModel?: string
+  env?: Record<string, string>
+}
+
 // ESM 环境下获取当前文件所在目录
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -143,6 +149,41 @@ function loadEnvFile(envPath: string): Record<string, string> {
   return parseEnvContent(content)
 }
 
+/** Normalize legacy/provider metadata to Gemini CLI auth identifiers. */
+function resolveGeminiAuthType(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const normalized = raw.trim().toLowerCase()
+  if (!normalized) return undefined
+
+  switch (normalized) {
+    case 'oauth':
+    case 'oauth-personal':
+    case 'login_with_google':
+    case 'google-oauth':
+      return 'oauth-personal'
+    case 'api-key':
+    case 'gemini-api-key':
+    case 'use_gemini':
+    case 'gemini':
+      return 'gemini-api-key'
+    case 'vertex-ai':
+    case 'use_vertex_ai':
+    case 'vertex':
+      return 'vertex-ai'
+    case 'compute-default-credentials':
+    case 'compute_adc':
+    case 'adc':
+      return 'compute-default-credentials'
+    case 'cloud-shell':
+    case 'legacy_cloud_shell':
+      return 'cloud-shell'
+    case 'gateway':
+      return 'gateway'
+    default:
+      return undefined
+  }
+}
+
 /**
  * 将键值对写入 .env 文件（简单覆盖，按 KEY 排序）
  */
@@ -231,6 +272,20 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
   const settingsPath = getGeminiSettingsPath()
   const envPath = getGeminiEnvPath()
   const dir = getGeminiDir()
+  let modelMeta: GeminiProviderMeta | null = null
+
+  // Parse metadata before writing settings so auth mode changes accompany the
+  // endpoint/API key update in one operation.
+  if (provider.model && provider.model.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(provider.model)
+      if (parsed && typeof parsed === 'object') {
+        modelMeta = parsed as GeminiProviderMeta
+      }
+    } catch {
+      // Plain model names are handled when the .env file is generated.
+    }
+  }
 
   // 确保目录存在
   ensureDir(dir)
@@ -265,14 +320,20 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
     settings.ide.enabled = true
   }
 
-  // 配置认证方式为 API Key（默认值，不覆盖用户自定义）
+  // Follow explicit provider auth metadata, then infer API-key mode from a
+  // non-empty key. With neither signal, preserve an existing user choice.
   if (!settings.security || typeof settings.security !== 'object') {
     settings.security = {}
   }
   if (!settings.security.auth || typeof settings.security.auth !== 'object') {
     settings.security.auth = {}
   }
-  if (settings.security.auth.selectedType === undefined) {
+  const providerAuthType =
+    resolveGeminiAuthType(modelMeta?.authType) ||
+    (provider.apiKey.trim() ? 'gemini-api-key' : undefined)
+  if (providerAuthType) {
+    settings.security.auth.selectedType = providerAuthType
+  } else if (settings.security.auth.selectedType === undefined) {
     settings.security.auth.selectedType = 'gemini-api-key'
   }
 
@@ -312,17 +373,9 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
   }
 
   // 解析 provider.model（可能是 JSON 元数据或纯字符串）
-  let modelMeta: { defaultModel?: string; env?: Record<string, string> } | null = null
-  if (provider.model && provider.model.trim().length > 0) {
-    try {
-      const parsed = JSON.parse(provider.model)
-      if (parsed && typeof parsed === 'object') {
-        modelMeta = parsed
-      }
-    } catch {
-      // 不是 JSON，当作普通模型名称
-      if (!selectedModel) env.GEMINI_MODEL = provider.model
-    }
+  if (provider.model && !modelMeta) {
+    // 不是 JSON，当作普通模型名称
+    if (!selectedModel) env.GEMINI_MODEL = provider.model
   }
 
   // 如果是 JSON 元数据，合并 env 并处理 fallback

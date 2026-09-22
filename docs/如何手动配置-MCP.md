@@ -12,7 +12,7 @@ AnyAI Tools 保存 MCP 服务商列表：
 ~/.anyaitools/mcp.json
 ```
 
-每个 server 通常包含：
+每个 server 使用统一的 canonical 结构保存，宿主工具的格式由适配层转换：
 
 ```json
 {
@@ -20,19 +20,34 @@ AnyAI Tools 保存 MCP 服务商列表：
     {
       "id": "filesystem",
       "name": "filesystem",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-      "env": {
-        "API_KEY": "sk-xxx"
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+        "env": {
+          "API_KEY": "sk-xxx"
+        }
       },
-      "enabledApps": ["claude", "gemini"]
+      "enabledTools": {
+        "claude": true,
+        "gemini": true,
+        "codex": false
+      }
     }
   ]
 }
 ```
 
-`enabledApps` 决定同步到哪些宿主工具。当前支持 Claude Code 和 Gemini CLI；
-Codex 在当前 writer 中不会同步 MCP。
+`enabledTools` 决定同步到哪些宿主工具。当前 Core 已支持 Claude Code、Gemini CLI、
+Codex 和 Grok Build 的原生配置格式；OpenCode 与 OpenClaw 会显示为暂不支持，
+不会强行写入猜测格式。旧版本的 `command`、`args`、`env`、`enabledApps` 配置会自动迁移。
+
+支持的 `transport.type`：
+
+- `stdio`：本地命令、参数和环境变量。
+- `sse`：远程 SSE URL。
+- `streamable-http`：远程 Streamable HTTP URL。
+- `http`：通用 HTTP URL，按宿主工具能力映射。
 
 ## Claude Code 原生方式
 
@@ -110,12 +125,59 @@ aat mcp remove <name>
 AnyAI Tools 会：
 
 1. 保存 MCP 到 `~/.anyaitools/mcp.json`。
-2. 根据 `enabledApps` 同步到 `~/.claude.json` 和/或
-   `~/.gemini/settings.json`。
+2. 根据每个 server 的 `enabledTools` 独立同步到宿主工具：
+   - Claude Code：`~/.claude.json` 的 `mcpServers`
+   - Gemini CLI：`~/.gemini/settings.json` 的 `mcpServers`
+   - Codex：`~/.codex/config.toml` 的 `mcp_servers`
+   - Grok Build：`$GROK_HOME/config.toml` 的 `mcp_servers`
 3. 保留宿主工具中未由 AnyAI Tools 管理的 MCP。
 4. 在删除或禁用 server 后重新同步宿主配置。
 
-为了兼容统一 Provider 表单，内部字段映射如下：
+## JSON 导入、导出与社区目录
+
+桌面端的“添加 MCP”支持：
+
+- 直接粘贴或选择 JSON 文件。
+- 自动识别 AnyAI Tools canonical `servers` 和 Claude/Cursor/Gemini 常见的
+  `mcpServers` 格式。
+- 重名时选择跳过、覆盖或自动重命名。
+- 一键导出 `mcp-servers.json`。
+- 进入 MCP 页面自动加载内置目录：
+  - 官方 MCP Registry API
+  - MCP 官方参考服务器仓库
+  - TensorBlock 社区 MCP catalog
+- 在“添加来源”中保存自定义 HTTPS JSON、GitHub README 或兼容的 Registry API；
+  来源会写入 `~/.anyaitools/mcp-registries.json`，下次进入页面继续加载。
+- 目录请求会缓存到 `~/.anyaitools/mcp-registry-cache.json`，网络失败时显示上次成功结果。
+
+Registry 只加载配置清单，不自动执行仓库代码或安装依赖。官方 package 条目只会生成
+`npx`、`uvx` 或 `docker` 配置模板，真正启用前仍需用户确认依赖、权限和环境变量。
+清单示例：
+
+```json
+{
+  "name": "Community MCP Registry",
+  "version": 1,
+  "servers": [
+    {
+      "name": "filesystem",
+      "description": "Access local files",
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      },
+      "enabledTools": {
+        "claude": true,
+        "gemini": true,
+        "codex": true
+      }
+    }
+  ]
+}
+```
+
+旧版本 CLI 仍可使用 Provider 兼容入口，内部字段映射如下：
 
 | AnyAI Tools 字段 | MCP 含义                                 |
 | ---------------- | ---------------------------------------- |
@@ -132,16 +194,16 @@ AnyAI Tools 会：
 
 检查：
 
-1. server 是否包含在 `enabledApps`。
-2. `~/.claude.json` 或 `~/.gemini/settings.json` 是否已经更新。
+1. server 是否在目标工具的 `enabledTools` 中启用。
+2. 目标工具的原生配置文件是否已经更新。
 3. command、args、env 是否能在终端单独运行。
 4. 重启宿主工具或使用 `/mcp` 重新查看连接状态。
 
-### 为什么 Codex 没有同步 MCP
+### 为什么某个工具没有同步 MCP
 
-这是当前项目的明确限制：`writeMCPConfigForApp('codex', ...)` 直接返回。
-需要在 Codex 中使用外部工具时，应按 Codex 当前版本提供的原生扩展能力单独配置，
-不能依赖 AnyAI Tools 的 MCP 同步。
+检查该工具的能力卡片和传输类型。AnyAI Tools 不会把 MCP 强行写入没有稳定官方
+配置契约的工具；当前 OpenCode 与 OpenClaw 会明确显示为“不支持”。Codex、
+Gemini、Claude 和 Grok 则按各自的 JSON/TOML 原生格式同步。
 
 ## 官方资料
 

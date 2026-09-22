@@ -257,23 +257,203 @@ export interface ModelCatalogRequest {
 // 来源: packages/core/src/writers/mcp.ts
 // ---------------------------------------------------------------------------
 
-export type AppType = 'claude' | 'codex' | 'gemini'
+/** Tools that can host an MCP server configuration. */
+export type MCPToolType = Exclude<ToolType, 'mcp'>
 
-export interface MCPServer {
-  id: string
-  name: string
+/** Legacy name kept for the existing renderer/CLI API. */
+export type AppType = MCPToolType
+
+export type MCPTransportType = 'stdio' | 'sse' | 'streamable-http' | 'http'
+
+export interface MCPStdioTransport {
+  type: 'stdio'
   command: string
   args: string[]
   env?: Record<string, string | number>
+  cwd?: string
+  envVars?: string[]
+}
+
+export interface MCPRemoteTransport {
+  type: Exclude<MCPTransportType, 'stdio'>
+  url: string
+  headers?: Record<string, string>
+  bearerTokenEnvVar?: string
+}
+
+export type MCPTransport = MCPStdioTransport | MCPRemoteTransport
+
+export type MCPSourceKind = 'manual' | 'json' | 'registry' | 'github'
+
+export interface MCPSource {
+  kind: MCPSourceKind
+  url?: string
+  repository?: string
+  version?: string
+}
+
+/**
+ * Canonical MCP server model. The legacy command/args/env/enabledApps fields
+ * remain optional so old backups and integrations can be read without a
+ * destructive migration.
+ */
+export interface MCPServer {
+  id: string
+  name: string
+  transport: MCPTransport
   description?: string
+  source?: MCPSource
+  /**
+   * Optional capability declaration from a registry or manifest. This limits
+   * which host tools may receive the server; it does not enable those tools.
+   */
+  supportedTools?: MCPToolType[]
   createdAt: number
   lastModified: number
-  enabledApps: AppType[]
+  enabledTools: Partial<Record<MCPToolType, boolean>>
+
+  /** @deprecated use transport.type === 'stdio' and its fields */
+  command?: string
+  /** @deprecated use transport.type === 'stdio' and its fields */
+  args?: string[]
+  /** @deprecated use transport.type === 'stdio' and its fields */
+  env?: Record<string, string | number>
+  /** @deprecated use enabledTools */
+  enabledApps?: AppType[]
 }
 
 export interface MCPConfig {
+  schemaVersion?: number
   servers: MCPServer[]
-  managedServerNames: Record<AppType, string[]>
+  /** Names used for one-write cleanup of renamed/removed entries. */
+  managedServerNames: Partial<Record<MCPToolType, string[]>>
+}
+
+export interface MCPToolCapability {
+  tool: MCPToolType
+  displayName: string
+  supported: boolean
+  reason?: string
+  configPath?: string
+  transportTypes: MCPTransportType[]
+}
+
+export interface MCPServerInput {
+  name: string
+  transport: MCPTransport
+  description?: string
+  source?: MCPSource
+  enabledTools?: Partial<Record<MCPToolType, boolean>>
+  supportedTools?: MCPToolType[]
+}
+
+export type MCPImportDuplicateStrategy = 'skip' | 'overwrite' | 'rename'
+
+export interface MCPImportOptions {
+  duplicateStrategy?: MCPImportDuplicateStrategy
+  source?: MCPSource
+}
+
+export interface MCPImportResult {
+  servers: MCPServer[]
+  added: MCPServer[]
+  skipped: string[]
+  renamed: Array<{ from: string; to: string }>
+  warnings: string[]
+}
+
+export interface MCPValidationResult {
+  valid: boolean
+  errors: string[]
+  warnings: string[]
+  serverCount: number
+}
+
+export interface MCPExportOptions {
+  tools?: MCPToolType[]
+  includeDisabled?: boolean
+}
+
+export interface MCPRegistry {
+  name?: string
+  version?: number
+  description?: string
+  servers: MCPServerInput[]
+  source?: MCPSource
+  entries?: MCPRegistryEntry[]
+  fetchedAt?: number
+  nextCursor?: string
+  warnings?: string[]
+}
+
+export type MCPRegistrySourceKind = 'official-api' | 'json' | 'github'
+
+export type MCPRegistryParser =
+  | 'official-registry'
+  | 'generic-json'
+  | 'community-catalog'
+  | 'github-readme'
+
+export interface MCPRegistrySource {
+  id: string
+  name: string
+  kind: MCPRegistrySourceKind
+  url: string
+  description?: string
+  builtIn: boolean
+  enabled: boolean
+  parser: MCPRegistryParser
+  maxResponseBytes?: number
+  lastFetchedAt?: number
+  lastSuccessAt?: number
+  lastError?: string
+}
+
+export interface MCPRegistryEntry {
+  id: string
+  name: string
+  description?: string
+  category?: string
+  authType?: string
+  toolCount?: number
+  installConfidence?: string
+  repository?: string
+  documentationUrl?: string
+  license?: string
+  transportType?: MCPTransportType
+  supportedTools?: MCPToolType[]
+  envRequirements?: string[]
+  warnings: string[]
+  sourceId: string
+  sourceUrl: string
+  installable: boolean
+  server?: MCPServerInput
+}
+
+export interface MCPRegistrySnapshot {
+  source: MCPRegistrySource
+  entries: MCPRegistryEntry[]
+  fetchedAt?: number
+  stale: boolean
+  error?: string
+  nextCursor?: string
+}
+
+export interface MCPRegistrySourceInput {
+  name: string
+  kind: MCPRegistrySourceKind
+  url: string
+  description?: string
+  parser?: MCPRegistryParser
+  enabled?: boolean
+}
+
+export interface MCPRegistryQuery {
+  query?: string
+  sourceIds?: string[]
+  transportTypes?: MCPTransportType[]
+  installableOnly?: boolean
+  refresh?: boolean
 }
 
 // ---------------------------------------------------------------------------

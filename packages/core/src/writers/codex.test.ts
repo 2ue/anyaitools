@@ -200,6 +200,7 @@ describe('Codex Writer', () => {
         apiKey: 'test-api-key-123',
         createdAt: Date.now(),
       }
+      setCodexPreserveProviderName(false)
       writeCodexConfig(provider)
 
       const configContent = fs.readFileSync(getCodexConfigPath(), 'utf-8')
@@ -287,6 +288,7 @@ describe('Codex Writer', () => {
         apiKey: 'new-key',
         createdAt: Date.now(),
       }
+      setCodexPreserveProviderName(false)
       writeCodexConfig(provider)
 
       // 验证 config.toml
@@ -347,8 +349,6 @@ describe('Codex Writer', () => {
         'utf-8'
       )
       fs.writeFileSync(authPath, JSON.stringify({ OPENAI_API_KEY: 'old-key' }), 'utf-8')
-      setCodexPreserveProviderName(true)
-
       const provider: Provider = {
         id: 'protected-id',
         name: 'NewProvider',
@@ -374,8 +374,6 @@ describe('Codex Writer', () => {
       const configPath = getCodexConfigPath()
       fs.mkdirSync(path.dirname(configPath), { recursive: true })
       fs.writeFileSync(configPath, TOML.stringify({ custom_field: 'keep' } as any), 'utf-8')
-      setCodexPreserveProviderName(true)
-
       const provider: Provider = {
         id: 'initialize-id',
         name: 'InitializedProvider',
@@ -427,7 +425,7 @@ describe('Codex Writer', () => {
         'utf-8'
       )
 
-      expect(getCodexSettings().preserveProviderName).toBe(false)
+      expect(getCodexSettings().preserveProviderName).toBe(true)
       expect(setCodexPreserveProviderName(true).preserveProviderName).toBe(true)
       expect(getCodexSettings().preserveProviderName).toBe(true)
 

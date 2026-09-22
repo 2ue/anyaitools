@@ -16,7 +16,7 @@ interface CodexPageProps {
 }
 
 export default function CodexPage(props: CodexPageProps) {
-  const [preserveProviderName, setPreserveProviderName] = useState(false)
+  const [preserveProviderName, setPreserveProviderName] = useState(true)
   const [isLoadingSetting, setIsLoadingSetting] = useState(true)
   const [isSavingSetting, setIsSavingSetting] = useState(false)
   const [settingsError, setSettingsError] = useState('')
@@ -56,8 +56,8 @@ export default function CodexPage(props: CodexPageProps) {
 
   const isSettingBusy = isLoadingSetting || isSavingSetting
   const settingTitle = preserveProviderName
-    ? '已开启：普通切换时保留 config.toml 顶层 model_provider'
-    : '已关闭：普通切换时使用目标服务商更新 model_provider'
+    ? '已开启：切换时保留 Codex model_provider 名称'
+    : '已关闭：切换时使用目标服务商名称'
 
   return (
     <>
@@ -71,7 +71,7 @@ export default function CodexPage(props: CodexPageProps) {
             type="button"
             role="switch"
             aria-checked={preserveProviderName}
-            aria-label="切换时保护 model_provider"
+            aria-label="切换时保护 Codex model_provider 名称"
             title={isLoadingSetting ? '正在读取 Codex 设置' : settingTitle}
             disabled={isSettingBusy}
             onClick={handleToggleProviderNameProtection}
@@ -86,7 +86,7 @@ export default function CodexPage(props: CodexPageProps) {
             ) : (
               <LockKeyhole className="h-4 w-4" />
             )}
-            <span>保护 model_provider</span>
+            <span>保护 provider 名称</span>
             <span
               aria-hidden="true"
               className={`relative h-4 w-7 flex-shrink-0 rounded-full transition-colors ${
