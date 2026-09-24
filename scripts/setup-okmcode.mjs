@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * OKMCode 快速配置脚本（基于 anyaitools）
+ * okmcode 快速配置脚本（基于 anyaitools）
  *
- * 功能：将 OKMCode 服务商配置到所有 AI 编程工具
+ * 功能：将 okmcode 服务商配置到所有 AI 编程工具
  * 策略：快捷配置入口，最终按覆盖写入应用到目标工具配置
  *
  * 用法：
@@ -30,7 +30,7 @@ import {
   getOpenCodeConfigPath,
 } from '../packages/core/dist/index.js'
 
-const PROVIDER_NAME = 'OKMCode'
+const PROVIDER_NAME = 'okmcode'
 const OKMCODE_BASE_URLS = {
   claude: 'https://okmcode.com',
   codex: 'https://okmcode.com',
@@ -100,14 +100,14 @@ function rollbackTargets(entries) {
 }
 
 async function main() {
-  console.log('🚀 OKMCode 快速配置工具\n')
+  console.log('🚀 okmcode 快速配置工具\n')
 
   // 1. 获取 API Key
   let apiKey = process.argv[2]
 
   if (!apiKey) {
     const rl = createInterface({ input: stdin, output: stdout })
-    apiKey = await rl.question('请输入 OKMCode API Key: ')
+    apiKey = await rl.question('请输入 okmcode API Key: ')
     rl.close()
   }
 
@@ -140,7 +140,7 @@ async function main() {
     }
   }
 
-  console.log('\n🎉 OKMCode 配置完成！')
+  console.log('\n🎉 okmcode 配置完成！')
   console.log('\n提示：请重启对应的工具以使配置生效。')
 }
 

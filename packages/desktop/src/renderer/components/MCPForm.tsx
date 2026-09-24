@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react'
 import type { MCPServer } from '@anyaitools/types'
 import { BUTTON_STYLES } from '../styles/button'
+import SelectMenu from './SelectMenu'
 
 interface MCPFormData {
   name: string
@@ -213,15 +214,16 @@ export default function MCPForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">传输类型</label>
-        <select
+        <SelectMenu
           value={transportType}
-          onChange={(e) => setTransportType(e.target.value as MCPFormData['transportType'])}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="stdio">本地进程（stdio）</option>
-          <option value="sse">远程 SSE</option>
-          <option value="streamable-http">远程 Streamable HTTP</option>
-        </select>
+          onChange={(value) => setTransportType(value)}
+          ariaLabel="传输类型"
+          options={[
+            { value: 'stdio', label: '本地进程（stdio）' },
+            { value: 'sse', label: '远程 SSE' },
+            { value: 'streamable-http', label: '远程 Streamable HTTP' },
+          ]}
+        />
       </div>
 
       {transportType === 'stdio' ? (
@@ -321,7 +323,7 @@ export default function MCPForm({
         />
       </div>
 
-      <div className="flex gap-2 justify-end pt-2">
+      <div className="sticky bottom-0 z-10 -mx-6 mt-6 flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-white px-6 py-4">
         <button
           type="button"
           onClick={onCancel}

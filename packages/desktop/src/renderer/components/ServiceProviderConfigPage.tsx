@@ -1012,36 +1012,38 @@ export default function ServiceProviderConfigPage({
 
       {/* Use Preset Modal */}
       {showUsePresetModal && usingPreset && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold tracking-tight text-gray-900 mb-4">
-              使用预置服务商
-            </h2>
-            <ProviderForm
-              preset={usingPreset}
-              tool={usingPreset.type}
-              existingProviders={(() => {
-                switch (usingPreset.type) {
-                  case TOOL_TYPES.CODEX:
-                    return codexProviders
-                  case TOOL_TYPES.CLAUDE:
-                    return claudeProviders
-                  case TOOL_TYPES.GEMINI:
-                    return geminiProviders
-                  case TOOL_TYPES.OPENCODE:
-                    return opencodeProviders
-                  case TOOL_TYPES.OPENCLAW:
-                    return openclawProviders
-                  case TOOL_TYPES.GROK:
-                    return grokProviders
-                }
-              })()}
-              onSubmit={handleUsePresetSubmit}
-              onCancel={() => {
-                setShowUsePresetModal(false)
-                setUsingPreset(undefined)
-              }}
-            />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="flex max-h-[90vh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="shrink-0 border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900">使用预置服务商</h2>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <ProviderForm
+                preset={usingPreset}
+                tool={usingPreset.type}
+                existingProviders={(() => {
+                  switch (usingPreset.type) {
+                    case TOOL_TYPES.CODEX:
+                      return codexProviders
+                    case TOOL_TYPES.CLAUDE:
+                      return claudeProviders
+                    case TOOL_TYPES.GEMINI:
+                      return geminiProviders
+                    case TOOL_TYPES.OPENCODE:
+                      return opencodeProviders
+                    case TOOL_TYPES.OPENCLAW:
+                      return openclawProviders
+                    case TOOL_TYPES.GROK:
+                      return grokProviders
+                  }
+                })()}
+                onSubmit={handleUsePresetSubmit}
+                onCancel={() => {
+                  setShowUsePresetModal(false)
+                  setUsingPreset(undefined)
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

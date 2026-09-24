@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROFILE_KEY="okmcode"
-PROFILE_TITLE="OKMCode"
+PROFILE_TITLE="okmcode"
 PROVIDER_NAME=""
 BASE_URL=""
 API_KEY=""
@@ -98,7 +98,7 @@ EOF
 resolve_profile_defaults() {
   case "$PROFILE_KEY" in
     okmcode)
-      PROFILE_TITLE="OKMCode"
+      PROFILE_TITLE="okmcode"
       [[ -z "$PROVIDER_NAME" ]] && PROVIDER_NAME="okmcode"
       [[ -z "$BASE_URL" ]] && BASE_URL="https://okmcode.com"
       ;;

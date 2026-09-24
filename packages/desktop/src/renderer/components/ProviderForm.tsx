@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import type {
   Provider,
   AddProviderInput,
@@ -15,6 +16,7 @@ import type {
   ModelReasoningMode,
 } from '@anyaitools/types'
 import { BUTTON_STYLES } from '../styles/button'
+import SelectMenu from './SelectMenu'
 
 type ModelFormTool = 'codex' | 'claude' | 'gemini' | 'opencode' | 'openclaw' | 'grok'
 
@@ -93,6 +95,7 @@ export default function ProviderForm({
   const selectedCatalogModel = catalog?.models.find((item) => item.id === model)
   const catalogModels = catalog?.models || []
   const catalogVariants = selectedCatalogModel?.variants || []
+  const canClearModel = Boolean(model || (provider && provider.modelConfig)) && tool !== 'grok'
   const reasoningOptions = (() => {
     const supported = selectedCatalogModel?.reasoning?.supportedValues
     if (supported?.length) {
@@ -336,14 +339,17 @@ export default function ProviderForm({
     const trimmedDesc = desc.trim()
     const trimmedModel = model.trim()
     const modelConfig = buildModelConfig()
+    const shouldClearModel = Boolean(
+      provider && !trimmedModel && (provider.model?.trim() || provider.modelConfig)
+    )
 
     const baseInput = {
       name: trimmedName,
       desc: trimmedDesc || undefined,
       baseUrl: baseUrl.trim(),
       ...(finalApiKey !== undefined ? { apiKey: finalApiKey } : {}),
-      ...(trimmedModel ? { model: trimmedModel } : {}),
-      ...(modelConfig ? { modelConfig } : {}),
+      ...(shouldClearModel ? { clearModel: true } : trimmedModel ? { model: trimmedModel } : {}),
+      ...(!shouldClearModel && modelConfig ? { modelConfig } : {}),
       ...(tool === 'grok'
         ? {
             model: trimmedModel,
@@ -601,10 +607,10 @@ export default function ProviderForm({
           </div>
 
           {catalogModels.length > 0 && (
-            <select
+            <SelectMenu
               value={catalogModels.some((entry) => entry.id === model) ? model : ''}
-              onChange={(event) => {
-                const selected = catalogModels.find((entry) => entry.id === event.target.value)
+              onChange={(selectedId) => {
+                const selected = catalogModels.find((entry) => entry.id === selectedId)
                 if (!selected) return
                 setModel(selected.id)
                 setModelSource('catalog')
@@ -618,31 +624,53 @@ export default function ProviderForm({
                     : String(selected.reasoning.supportedValues[0])
                 )
               }}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="选择模型"
-            >
-              <option value="">从目录选择模型</option>
-              {catalogModels.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name ? `${entry.name} (${entry.id})` : entry.id}
-                </option>
-              ))}
-            </select>
+              ariaLabel="选择模型"
+              placeholder="从目录选择模型"
+              options={[
+                { value: '', label: '从目录选择模型' },
+                ...catalogModels.map((entry) => ({
+                  value: entry.id,
+                  label: entry.name ? `${entry.name} (${entry.id})` : entry.id,
+                })),
+              ]}
+            />
           )}
 
-          <input
-            type="text"
-            value={model}
-            onChange={(event) => {
-              setModel(event.target.value)
-              setModelSource('manual')
-            }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder={
-              tool === 'opencode' ? 'provider/model-id' : tool === 'grok' ? 'grok-build' : '模型 ID'
-            }
-            required={tool === 'grok'}
-          />
+          <div className="flex items-start gap-2">
+            <input
+              type="text"
+              value={model}
+              onChange={(event) => {
+                setModel(event.target.value)
+                setModelSource('manual')
+              }}
+              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={
+                tool === 'opencode'
+                  ? 'provider/model-id'
+                  : tool === 'grok'
+                    ? 'grok-build'
+                    : '模型 ID'
+              }
+              required={tool === 'grok'}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setModel('')
+                setModelSource('manual')
+                setVariant('')
+                setReasoningMode('unsupported')
+                setReasoningValue('')
+              }}
+              disabled={!canClearModel}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              title={tool === 'grok' ? 'Grok 必须配置模型' : '清除模型'}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              清除
+            </button>
+          </div>
 
           {catalogError && <p className="text-xs text-amber-700">{catalogError}</p>}
           {catalog?.warnings?.map((warning) => (
@@ -657,21 +685,18 @@ export default function ProviderForm({
                 Variant / 推理档位
               </label>
               {catalogVariants.length > 0 ? (
-                <select
+                <SelectMenu
                   value={variant}
-                  onChange={(event) => {
-                    setVariant(event.target.value)
+                  onChange={(value) => {
+                    setVariant(value)
                     setReasoningMode('variant')
                   }}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">不指定</option>
-                  {catalogVariants.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="Variant / 推理档位"
+                  options={[
+                    { value: '', label: '不指定' },
+                    ...catalogVariants.map((item) => ({ value: item, label: item })),
+                  ]}
+                />
               ) : (
                 <input
                   type="text"
@@ -711,21 +736,21 @@ export default function ProviderForm({
                 <label className="mb-1 block text-xs font-medium text-gray-600">
                   {tool === 'openclaw' ? '思考强度（按模型 profile）' : '推理强度'}
                 </label>
-                <select
+                <SelectMenu
                   value={reasoningValue}
-                  onChange={(event) => {
+                  onChange={(value) => {
                     setReasoningMode(tool === 'openclaw' ? 'effort' : 'effort')
-                    setReasoningValue(event.target.value)
+                    setReasoningValue(value)
                   }}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">不指定</option>
-                  {reasoningOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="推理强度"
+                  options={[
+                    { value: '', label: '不指定' },
+                    ...reasoningOptions.map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    })),
+                  ]}
+                />
               </div>
             )
           )}
@@ -750,7 +775,7 @@ export default function ProviderForm({
         </div>
       )}
 
-      <div className="flex gap-2 justify-end pt-2">
+      <div className="sticky bottom-0 z-10 -mx-6 mt-6 flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-white px-6 py-4">
         <button
           type="button"
           onClick={onCancel}

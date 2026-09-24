@@ -1,0 +1,40 @@
+{
+  "name": "@vebing-tools/anyaitools-web",
+  "version": "0.0.9",
+  "private": true,
+  "type": "module",
+  "description": "Web renderer for AnyAI Tools, sharing the Desktop UI",
+  "main": "./dist/index.html",
+  "files": [
+    "dist",
+    "index.html",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@anyaitools/types": "workspace:*",
+    "@lobehub/icons-static-svg": "^1.86.0",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "lucide-react": "^0.314.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vite-plugin-svgr": "^4.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

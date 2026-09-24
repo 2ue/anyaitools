@@ -21,7 +21,7 @@
    - `docs/官方文档/codex/config.md`
    - `docs/官方文档/claude/settings.md`
    - `docs/官方文档/gemini/config.md`
-7. OKMCode 一键脚本（可选）：`scripts/README-OKMCODE-SETUP.md`
+7. okmcode 一键脚本（可选）：`scripts/README-OKMCODE-SETUP.md`
 
 ## 截图资源
 

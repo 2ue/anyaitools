@@ -60,6 +60,8 @@ export type WriteMode = 'merge' | 'overwrite'
 
 export interface WriteOptions {
   mode?: WriteMode
+  /** Remove the provider's selected model instead of applying a fallback. */
+  clearModel?: boolean
 }
 
 export interface EditOptions {

@@ -28,7 +28,7 @@ describe('OpenClaw Writer', () => {
   function createProvider(overrides: Partial<Provider> = {}): Provider {
     return {
       id: 'openclaw-provider',
-      name: 'OKMCode',
+      name: 'okmcode',
       baseUrl: 'https://okmcode.com/v1',
       apiKey: 'sk-openclaw-test',
       createdAt: Date.now(),
@@ -49,11 +49,11 @@ describe('OpenClaw Writer', () => {
     const openclawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
     const modelsConfig = JSON.parse(fs.readFileSync(modelsPath, 'utf-8'))
 
-    expect(openclawConfig.agents?.defaults?.model?.primary).toBe('OKMCode/gpt-5.5')
-    expect(openclawConfig.agents?.defaults?.imageModel?.primary).toBe('OKMCode/gpt-5.5')
+    expect(openclawConfig.agents?.defaults?.model?.primary).toBe('okmcode/gpt-5.5')
+    expect(openclawConfig.agents?.defaults?.imageModel?.primary).toBe('okmcode/gpt-5.5')
     expect(typeof openclawConfig.agents?.defaults?.workspace).toBe('string')
 
-    const provider = modelsConfig.providers?.OKMCode
+    const provider = modelsConfig.providers?.okmcode
     expect(provider.baseUrl).toBe('https://okmcode.com/v1')
     expect(provider.apiKey).toBe('sk-openclaw-test')
     expect(provider.api).toBe('openai-responses')
@@ -65,7 +65,18 @@ describe('OpenClaw Writer', () => {
     expect(provider.models?.[0]?.contextWindow).toBe(1050000)
     expect(provider.models?.[0]?.maxTokens).toBe(128000)
     expect(provider.models).toHaveLength(1)
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.reasoning).toBe(true)
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.reasoning).toBe(true)
+  })
+
+  it('should use the exact lowercase okmcode display name for an empty provider name', () => {
+    writeOpenClawConfig(createProvider({ name: '' }))
+
+    const openclawConfig = JSON.parse(fs.readFileSync(getOpenClawConfigPath(), 'utf-8'))
+    const modelsConfig = JSON.parse(fs.readFileSync(getOpenClawModelsPath(), 'utf-8'))
+
+    expect(openclawConfig.agents?.defaults?.model?.primary).toBe('okmcode/gpt-5.5')
+    expect(openclawConfig.agents?.defaults?.imageModel?.primary).toBe('okmcode/gpt-5.5')
+    expect(modelsConfig.providers?.okmcode).toBeDefined()
   })
 
   it('should merge openclaw fields incrementally instead of full overwrite', () => {
@@ -162,31 +173,35 @@ describe('OpenClaw Writer', () => {
     expect(openclawConfig.customField).toBe('legacy-value')
     expect(openclawConfig.meta?.keep).toBe(true)
     expect(openclawConfig.models?.providers?.legacy?.baseUrl).toBe('https://legacy.example.com/v1')
-    expect(openclawConfig.models?.providers?.OKMCode?.apiKey).toBe('sk-new-openclaw')
-    expect(openclawConfig.models?.providers?.okmcode).toBeUndefined()
-    expect(openclawConfig.models?.providers?.OKMCode?.api).toBe('openai-responses')
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.compat).toBeUndefined()
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.reasoning).toBe(true)
+    expect(openclawConfig.models?.providers?.okmcode?.apiKey).toBe('sk-new-openclaw')
+    expect(
+      Object.keys(openclawConfig.models?.providers || {}).filter(
+        (key) => key.toLowerCase() === 'okmcode'
+      )
+    ).toEqual(['okmcode'])
+    expect(openclawConfig.models?.providers?.okmcode?.api).toBe('openai-responses')
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.compat).toBeUndefined()
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.reasoning).toBe(true)
     expect(openclawConfig.agents?.defaults?.workspace).toBe('/tmp/custom')
     expect(openclawConfig.agents?.defaults?.maxConcurrent).toBe(8)
-    expect(openclawConfig.agents?.defaults?.model?.primary).toBe('OKMCode/gpt-5.5')
-    expect(openclawConfig.agents?.defaults?.imageModel?.primary).toBe('OKMCode/gpt-5.5')
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.input).toEqual(['text', 'image'])
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.contextWindow).toBe(1050000)
-    expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.maxTokens).toBe(128000)
-    expect(openclawConfig.models?.providers?.OKMCode?.models).toHaveLength(1)
+    expect(openclawConfig.agents?.defaults?.model?.primary).toBe('okmcode/gpt-5.5')
+    expect(openclawConfig.agents?.defaults?.imageModel?.primary).toBe('okmcode/gpt-5.5')
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.input).toEqual(['text', 'image'])
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.contextWindow).toBe(1050000)
+    expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.maxTokens).toBe(128000)
+    expect(openclawConfig.models?.providers?.okmcode?.models).toHaveLength(1)
 
     expect(modelsConfig.customField).toBe('legacy-models-value')
     expect(modelsConfig.providers?.legacy?.baseUrl).toBe('https://old.example.com')
-    expect(modelsConfig.providers?.OKMCode?.apiKey).toBe('sk-new-openclaw')
+    expect(modelsConfig.providers?.okmcode?.apiKey).toBe('sk-new-openclaw')
     expect(modelsConfig.providers?.oKmCoDe).toBeUndefined()
-    expect(modelsConfig.providers?.OKMCode?.api).toBe('openai-responses')
-    expect(modelsConfig.providers?.OKMCode?.models?.[0]?.compat).toBeUndefined()
-    expect(modelsConfig.providers?.OKMCode?.models?.[0]?.reasoning).toBe(true)
-    expect(modelsConfig.providers?.OKMCode?.models?.[0]?.input).toEqual(['text', 'image'])
-    expect(modelsConfig.providers?.OKMCode?.models?.[0]?.contextWindow).toBe(1050000)
-    expect(modelsConfig.providers?.OKMCode?.models?.[0]?.maxTokens).toBe(128000)
-    expect(modelsConfig.providers?.OKMCode?.models).toHaveLength(1)
+    expect(modelsConfig.providers?.okmcode?.api).toBe('openai-responses')
+    expect(modelsConfig.providers?.okmcode?.models?.[0]?.compat).toBeUndefined()
+    expect(modelsConfig.providers?.okmcode?.models?.[0]?.reasoning).toBe(true)
+    expect(modelsConfig.providers?.okmcode?.models?.[0]?.input).toEqual(['text', 'image'])
+    expect(modelsConfig.providers?.okmcode?.models?.[0]?.contextWindow).toBe(1050000)
+    expect(modelsConfig.providers?.okmcode?.models?.[0]?.maxTokens).toBe(128000)
+    expect(modelsConfig.providers?.okmcode?.models).toHaveLength(1)
   })
 
   it('should overwrite unrelated providers and fields in overwrite mode', () => {
@@ -239,10 +254,10 @@ describe('OpenClaw Writer', () => {
 
     expect(openclawConfig.customField).toBeUndefined()
     expect(openclawConfig.models?.providers?.legacy).toBeUndefined()
-    expect(openclawConfig.models?.providers?.OKMCode?.apiKey).toBe('sk-overwrite-openclaw')
+    expect(openclawConfig.models?.providers?.okmcode?.apiKey).toBe('sk-overwrite-openclaw')
     expect(modelsConfig.customField).toBeUndefined()
     expect(modelsConfig.providers?.legacy).toBeUndefined()
-    expect(modelsConfig.providers?.OKMCode?.apiKey).toBe('sk-overwrite-openclaw')
+    expect(modelsConfig.providers?.okmcode?.apiKey).toBe('sk-overwrite-openclaw')
   })
 
   it('should fallback to built-in templates when template files are unavailable', () => {
@@ -265,10 +280,10 @@ describe('OpenClaw Writer', () => {
       const openclawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
       const modelsConfig = JSON.parse(fs.readFileSync(modelsPath, 'utf-8'))
 
-      expect(openclawConfig.agents?.defaults?.model?.primary).toBe('OKMCode/gpt-5.5')
-      expect(modelsConfig.providers?.OKMCode?.api).toBe('openai-responses')
-      expect(modelsConfig.providers?.OKMCode?.models?.[0]?.reasoning).toBe(true)
-      expect(openclawConfig.models?.providers?.OKMCode?.models?.[0]?.reasoning).toBe(true)
+      expect(openclawConfig.agents?.defaults?.model?.primary).toBe('okmcode/gpt-5.5')
+      expect(modelsConfig.providers?.okmcode?.api).toBe('openai-responses')
+      expect(modelsConfig.providers?.okmcode?.models?.[0]?.reasoning).toBe(true)
+      expect(openclawConfig.models?.providers?.okmcode?.models?.[0]?.reasoning).toBe(true)
     } finally {
       fs.renameSync(openclawTemplateBackupPath, openclawTemplatePath)
       fs.renameSync(modelsTemplateBackupPath, modelsTemplatePath)

@@ -317,9 +317,20 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
       [OPENCODE_PROVIDER_KEY]: providerConfig,
     },
   }
+  if (options.clearModel) {
+    delete nextConfig.model
+    const agents = nextConfig.agent || {}
+    for (const agentName of ['build', 'plan']) {
+      const agent = agents[agentName]
+      if (isRecord(agent)) delete agent.model
+    }
+    nextConfig.agent = agents
+  }
 
   const selectedModelWithVariant =
-    selectedVariant && selected.reference ? `${selected.reference}#${selectedVariant}` : undefined
+    !options.clearModel && selectedVariant && selected.reference
+      ? `${selected.reference}#${selectedVariant}`
+      : undefined
   if (selectedModelWithVariant) {
     const agents = nextConfig.agent || {}
     for (const agentName of ['build', 'plan']) {
@@ -332,7 +343,11 @@ export function writeOpenCodeConfig(provider: Provider, options: WriteOptions = 
     nextConfig.agent = agents
   }
 
-  if (typeof parameters.modelVariant === 'string' && parameters.modelVariant.trim()) {
+  if (
+    !options.clearModel &&
+    typeof parameters.modelVariant === 'string' &&
+    parameters.modelVariant.trim()
+  ) {
     const variant = parameters.modelVariant.trim()
     const agents = nextConfig.agent || {}
     for (const agentName of ['build', 'plan']) {

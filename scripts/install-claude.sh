@@ -93,7 +93,7 @@ resolve_profile_defaults() {
       [[ -z "$BASE_URL" ]] && BASE_URL="https://api.anthropic.com"
       ;;
     okmcode)
-      PROFILE_TITLE="OKMCode"
+      PROFILE_TITLE="okmcode"
       [[ -z "$BASE_URL" ]] && BASE_URL="https://okmcode.com"
       ;;
     *)

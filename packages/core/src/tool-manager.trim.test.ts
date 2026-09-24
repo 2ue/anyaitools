@@ -63,6 +63,43 @@ describe('ToolManager trim inputs', () => {
     expect(cloned.name).toBe(name3)
   })
 
+  it('should remove a provider model when clearModel is requested', () => {
+    const manager = createCodexManager()
+    const provider = manager.add({
+      name: `clear-model-${Date.now()}`,
+      baseUrl: 'https://example.com/v1',
+      apiKey: 'sk-test',
+      model: 'model-to-remove',
+      modelConfig: {
+        modelId: 'model-to-remove',
+        source: 'manual',
+      },
+    })
+
+    const edited = manager.edit(provider.id, { clearModel: true })
+
+    expect(edited.model).toBeUndefined()
+    expect(edited.modelConfig).toBeUndefined()
+    expect(manager.get(provider.id).model).toBeUndefined()
+    expect(manager.get(provider.id).modelConfig).toBeUndefined()
+  })
+
+  it('should remove the selected model from the active Codex config', () => {
+    const manager = createCodexManager()
+    const provider = manager.add({
+      name: `clear-active-model-${Date.now()}`,
+      baseUrl: 'https://example.com/v1',
+      apiKey: 'sk-test',
+      model: 'active-model',
+    })
+
+    manager.switch(provider.id)
+    manager.edit(provider.id, { clearModel: true })
+
+    const config = TOML.parse(fs.readFileSync(getCodexConfigPath(), 'utf-8')) as any
+    expect(config.model).toBeUndefined()
+  })
+
   it('should trim preset inputs', () => {
     const manager = createCodexManager()
     const seed = `preset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`

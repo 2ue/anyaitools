@@ -11,15 +11,15 @@ export interface OkmcodeProfile {
 
 export const OKMCODE_PROFILE: OkmcodeProfile = {
   commandName: 'okmcode',
-  title: 'OKMCode',
+  title: 'okmcode',
   defaultProviderName: 'okmcode',
-  endpointGroupLabel: 'OKMCode 官方线路',
+  endpointGroupLabel: 'okmcode 官方线路',
   endpointGroupDescription: '仅包含 okmcode.com 官方地址',
   baseUrls: [
     {
-      label: 'OKMCode 官方地址',
+      label: 'okmcode 官方地址',
       url: 'https://okmcode.com',
-      description: 'OKMCode 官方入口',
+      description: 'okmcode 官方入口',
     },
   ],
 }

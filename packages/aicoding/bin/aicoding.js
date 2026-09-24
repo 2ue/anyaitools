@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OKMCode 快速配置脚本（独立版本，不依赖 anyaitools）
+ * okmcode 快速配置脚本（独立版本，不依赖 anyaitools）
  *
  * 功能：直接修改 Codex、OpenCode、OpenClaw 的配置文件
  *
@@ -27,9 +27,9 @@ import inquirer from 'inquirer'
 
 const OKMCODE_ENDPOINTS = [
   {
-    label: 'OKMCode 官方地址',
+    label: 'okmcode 官方地址',
     url: 'https://okmcode.com',
-    description: 'OKMCode 官方入口',
+    description: 'okmcode 官方入口',
   },
 ]
 const DEFAULT_OPENAI_BASE_URL = OKMCODE_ENDPOINTS[0].url
@@ -280,7 +280,7 @@ function printBanner() {
       ' ██║   ██║ ██║╚██╔╝██║██║╚██╗██║',
       ' ╚██████╔╝ ██║ ╚═╝ ██║██║ ╚████║',
       '  ╚═════╝  ╚═╝     ╚═╝╚═╝  ╚═══╝',
-      '  OKMCode 一键配置向导 · 独立脚本',
+      '  okmcode 一键配置向导 · 独立脚本',
       '  自动写入选中工具配置，支持多选。\n',
     ].join('\n')
   )
@@ -322,7 +322,7 @@ async function promptPlatforms() {
       choices: [
         { name: 'Codex（需单独订阅 OpenAI 套餐）', value: 'codex' },
         { name: 'OpenCode（与 Codex 共享 OpenAI 套餐）', value: 'opencode' },
-        { name: 'OpenClaw（OKMCode /v1 端点，默认不选中）', value: 'openclaw' },
+        { name: 'OpenClaw（okmcode /v1 端点，默认不选中）', value: 'openclaw' },
         { name: '全部（将依次配置 Codex、OpenCode、OpenClaw）', value: 'all' },
       ],
       default: DEFAULT_PLATFORMS,
@@ -345,7 +345,7 @@ async function promptApiKey() {
     {
       type: 'password',
       name: 'apiKey',
-      message: '请输入 OKMCode API Key:',
+      message: '请输入 okmcode API Key:',
       mask: '*',
       validate: (value) => {
         if (!value) return 'API Key 不能为空'
@@ -426,10 +426,10 @@ function configureOpenCode(apiKey) {
 
   ensureDir(configDir)
 
-  // 构建 OKMCode provider 配置
+  // 构建 okmcode provider 配置
   const okmcodeProvider = {
     npm: '@ai-sdk/openai',
-    name: 'OKMCode',
+    name: 'okmcode',
     options: {
       baseURL: OPENAI_BASE_URL,
       apiKey: apiKey,
@@ -683,7 +683,7 @@ async function main() {
     }
   }
 
-  console.log(`\n🎉 OKMCode 配置完成！(${completed}/${tools.length})`)
+  console.log(`\n🎉 okmcode 配置完成！(${completed}/${tools.length})`)
 
   // 只显示配置的工具的文件位置
   console.log('\n配置文件位置：')

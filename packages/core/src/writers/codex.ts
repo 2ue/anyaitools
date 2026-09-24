@@ -203,7 +203,11 @@ const CONFLICTING_PROVIDER_AUTH_KEYS = [
   'aws',
 ] as const
 
-function applyCodexModelConfig(config: CodexConfig, provider: Provider): void {
+function applyCodexModelConfig(config: CodexConfig, provider: Provider, clearModel = false): void {
+  if (clearModel) {
+    delete config.model
+    return
+  }
   config.model = resolveProviderModel(provider, config.model || 'gpt-5.5')
 
   const reasoning = resolveProviderReasoning(provider)
@@ -338,7 +342,7 @@ function buildManagedProvider(
   }
 }
 
-function writeCodexConfigOverwrite(provider: Provider): void {
+function writeCodexConfigOverwrite(provider: Provider, options: WriteOptions): void {
   ensureDir(getCodexDir())
 
   const configPath = getCodexConfigPath()
@@ -349,7 +353,7 @@ function writeCodexConfigOverwrite(provider: Provider): void {
 
   const providerKey = resolveCodexProviderKey(provider)
   nextConfig.model_provider = providerKey
-  applyCodexModelConfig(nextConfig, provider)
+  applyCodexModelConfig(nextConfig, provider, options.clearModel)
   nextConfig.model_providers = {
     [providerKey]: buildManagedProvider(provider, providerKey),
   }
@@ -362,7 +366,7 @@ function writeCodexConfigOverwrite(provider: Provider): void {
   writeJSON(authPath, auth)
 }
 
-function writeCodexConfigMerge(provider: Provider): void {
+function writeCodexConfigMerge(provider: Provider, options: WriteOptions): void {
   ensureDir(getCodexDir())
 
   const configPath = getCodexConfigPath()
@@ -385,7 +389,7 @@ function writeCodexConfigMerge(provider: Provider): void {
   removeDeprecatedKeys(nextConfig)
 
   nextConfig.model_provider = providerKey
-  applyCodexModelConfig(nextConfig, provider)
+  applyCodexModelConfig(nextConfig, provider, options.clearModel)
 
   const existingProviders =
     nextConfig.model_providers &&
@@ -439,9 +443,9 @@ function writeCodexConfigMerge(provider: Provider): void {
  */
 export function writeCodexConfig(provider: Provider, options: WriteOptions = {}): void {
   if (options.mode === 'overwrite') {
-    writeCodexConfigOverwrite(provider)
+    writeCodexConfigOverwrite(provider, options)
     return
   }
 
-  writeCodexConfigMerge(provider)
+  writeCodexConfigMerge(provider, options)
 }

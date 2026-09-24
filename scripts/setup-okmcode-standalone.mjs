@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OKMCode 快速配置脚本（独立版本，不依赖 anyaitools）
+ * okmcode 快速配置脚本（独立版本，不依赖 anyaitools）
  *
  * 功能：直接修改 Claude Code、Codex、Gemini CLI、OpenCode 的配置文件
  *
@@ -202,10 +202,10 @@ function configureOpenCode(apiKey) {
 
   ensureDir(configDir)
 
-  // 构建 OKMCode provider 配置
+  // 构建 okmcode provider 配置
   const okmcodeProvider = {
     npm: '@ai-sdk/openai',
-    name: 'OKMCode',
+    name: 'okmcode',
     options: {
       baseURL: OKMCODE_BASE_URLS.opencode,
       apiKey: apiKey,
@@ -262,7 +262,7 @@ function configureOpenCode(apiKey) {
 // ============================================================================
 
 async function main() {
-  console.log('🚀 OKMCode 快速配置工具（独立版本）\n')
+  console.log('🚀 okmcode 快速配置工具（独立版本）\n')
 
   // 1. 解析命令行参数
   const args = process.argv.slice(2)
@@ -279,7 +279,7 @@ async function main() {
   // 2. 获取 API Key
   if (!apiKey) {
     const rl = createInterface({ input: stdin, output: stdout })
-    apiKey = await rl.question('请输入 OKMCode API Key: ')
+    apiKey = await rl.question('请输入 okmcode API Key: ')
     rl.close()
   }
 
@@ -309,7 +309,7 @@ async function main() {
     }
   }
 
-  console.log('\n🎉 OKMCode 配置完成！')
+  console.log('\n🎉 okmcode 配置完成！')
   console.log('\n配置文件位置：')
   console.log(`  - Claude Code: ${path.join(HOME_DIR, '.claude/settings.json')}`)
   console.log(`  - Codex:       ${path.join(HOME_DIR, '.codex/config.toml')}`)

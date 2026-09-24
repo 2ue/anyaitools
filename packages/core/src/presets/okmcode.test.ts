@@ -13,18 +13,18 @@ function getPresetBaseUrl(
   return presets.find((preset) => preset.name === name)?.baseUrl
 }
 
-describe('OKMCode built-in presets', () => {
-  it('should expose OKMCode for Claude with root URL', () => {
-    expect(getPresetBaseUrl(CC_PRESETS, 'OKMCode')).toBe(OKMCODE_ROOT_URL)
+describe('okmcode built-in presets', () => {
+  it('should expose okmcode for Claude with root URL', () => {
+    expect(getPresetBaseUrl(CC_PRESETS, 'okmcode')).toBe(OKMCODE_ROOT_URL)
   })
 
-  it('should expose OKMCode for Codex/Gemini/OpenCode', () => {
+  it('should expose okmcode for Codex/Gemini/OpenCode', () => {
     for (const presets of [CODEX_PRESETS, GEMINI_PRESETS, OPENCODE_PRESETS]) {
-      expect(getPresetBaseUrl(presets, 'OKMCode')).toBe(OKMCODE_ROOT_URL)
+      expect(getPresetBaseUrl(presets, 'okmcode')).toBe(OKMCODE_ROOT_URL)
     }
   })
 
-  it('should expose OKMCode for OpenClaw with /v1 URL', () => {
-    expect(getPresetBaseUrl(OPENCLAW_PRESETS, 'OKMCode')).toBe(`${OKMCODE_ROOT_URL}/v1`)
+  it('should expose okmcode for OpenClaw with /v1 URL', () => {
+    expect(getPresetBaseUrl(OPENCLAW_PRESETS, 'okmcode')).toBe(`${OKMCODE_ROOT_URL}/v1`)
   })
 })

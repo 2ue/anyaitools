@@ -36,29 +36,65 @@ aat --help
 ### Claude Code
 
 - **Anthropic Official**：`https://api.anthropic.com`
-- **OKMCode**：`https://okmcode.com`
-- **OKMCode**：`https://okmcode.com`
+- **okmcode**：`https://okmcode.com`
 
 ### Codex
 
 - **OpenAI Official**：`https://api.openai.com/v1`
-- **OKMCode**：`https://okmcode.com`
-- **OKMCode**：`https://okmcode.com`
+- **okmcode**：`https://okmcode.com`
 
 ### Gemini CLI
 
 - **Google Gemini (API Key)**：官方默认（无需设置 baseUrl）
-- **OKMCode**：`https://okmcode.com`
-- **OKMCode**：`https://okmcode.com`
+- **okmcode**：`https://okmcode.com`
 
 ### OpenCode
 
-- **OKMCode**：`https://okmcode.com`（npm: `@ai-sdk/openai`）
-- **OKMCode**：`https://okmcode.com`（npm: `@ai-sdk/openai`）
+- **okmcode**：`https://okmcode.com`（npm: `@ai-sdk/openai`）
 
 ### Grok Build
 
 - **xAI Grok Build**：官方内置 `grok-build` 模型，保留 Grok 登录与内置路由
+
+## 🌐 启动 Web 版
+
+安装 CLI 后，可以在 Linux 等只能安装命令行工具的环境中启动与 Desktop 共用页面的
+Web 版。Web 前端会在 CLI 构建时作为静态资源内置到 CLI 包中，不需要额外安装 Web npm
+包。Web 版和 Desktop/CLI 共用同一套核心写入逻辑；正式使用会写入当前环境对应的
+AnyAI Tools 与目标工具配置。需要隔离预览时，请用临时 `HOME` 或容器环境启动。
+
+```bash
+# 前台模式，终端关闭或按 Ctrl+C 即停止
+aat web start --port 3000
+```
+
+浏览器访问：
+
+```text
+http://127.0.0.1:3000/
+```
+
+需要后台运行时使用业界常用的 `daemon`（守护进程）模式：
+
+```bash
+aat web start \
+  --host 0.0.0.0 \
+  --port 3000 \
+  --mode daemon \
+  --token '你的随机 token'
+```
+
+常用管理命令：
+
+```bash
+aat web status
+aat web status --json
+aat web restart --port 3000 --mode daemon --token '你的随机 token'
+aat web stop
+```
+
+默认运行文件为 `~/.anyaitools/web-server.pid` 和
+`~/.anyaitools/logs/web-server.log`。Web 端不显示 Desktop 专属的检查更新入口。
 
 ## 🧭 CLI 使用速览
 
@@ -100,7 +136,7 @@ aat grok add|list|use|current|edit|remove|clone  # gk 是等价别名
 
 ```bash
 aat cx add --name work --base-url https://api.example.com --api-key sk-xxx --switch
-aat cc add --preset OKMCode --api-key sk-xxx --switch
+aat cc add --preset okmcode --api-key sk-xxx --switch
 aat gm edit default --new-name personal --base-url '' --api-key ''
 aat oc remove old-provider --yes
 ```
@@ -174,18 +210,18 @@ $ aat cx add
 
 ? 选择预置服务商:
   OpenAI Official - OpenAI 官方 API
-  OKMCode - OKMCode 服务 (OpenAI/Codex 兼容)
+  okmcode - okmcode 服务 (OpenAI/Codex 兼容)
 
-使用预设: OKMCode - OKMCode 服务 (OpenAI/Codex 兼容)
+使用预设: okmcode - okmcode 服务 (OpenAI/Codex 兼容)
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
 
 ✅ 添加成功
 
-  OKMCode [Codex]
+  okmcode [Codex]
   https://okmcode.com
 
 ? 是否立即切换到此服务商? (Y(y) / N(n))
@@ -207,9 +243,9 @@ $ aat cx list
      https://api.openai.com/v1
      OpenAI 官方 API
 
-  ○  OKMCode
+  ○  okmcode
      https://okmcode.com
-     OKMCode 服务 (OpenAI/Codex 兼容)
+     okmcode 服务 (OpenAI/Codex 兼容)
 ```
 
 **use**
@@ -219,11 +255,11 @@ $ aat cx use
 
 ? 选择要切换的服务商:
   OpenAI Official - https://api.openai.com/v1
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 ✅ 切换成功
 
-  OKMCode [Codex]
+  okmcode [Codex]
   URL: https://okmcode.com
 
 配置已更新:
@@ -251,19 +287,19 @@ $ aat cx edit
 
 ? 选择要编辑的服务商:
   OpenAI Official - https://api.openai.com/v1
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 ✏️  编辑服务商
 
 提示: 留空则保持原值
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? API 地址: https://okmcode.com
 ? API 密钥 (留空保持不变): ********
 
 ✅ 编辑成功
 
-  OKMCode [Codex]
+  okmcode [Codex]
   ID: codex-1768916065885-gmn001
   URL: https://okmcode.com
 ```
@@ -275,7 +311,7 @@ $ aat cx clone
 
 ? 选择要克隆的服务商:
   OpenAI Official - https://api.openai.com/v1
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 克隆自: OpenAI Official
 
@@ -298,11 +334,11 @@ $ aat cx remove
 
 ? 选择要删除的服务商:
   OpenAI Official - https://api.openai.com/v1
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-? 确定删除 "OKMCode"? (Y(y) / N(n))
+? 确定删除 "okmcode"? (Y(y) / N(n))
 
-✅ 已删除: OKMCode
+✅ 已删除: okmcode
 ```
 
 #### Claude Code 命令执行效果
@@ -455,18 +491,18 @@ $ aat gm add
 
 ? 选择预置服务商:
   Google Gemini (API Key) - 使用官方 Gemini API（通过 GEMINI_API_KEY 或 GOOGLE_API_KEY 认证）
-  OKMCode - OKMCode 服务 (Gemini 兼容)
+  okmcode - okmcode 服务 (Gemini 兼容)
 
-使用预设: OKMCode - OKMCode 服务 (Gemini 兼容)
+使用预设: okmcode - okmcode 服务 (Gemini 兼容)
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
 
 ✅ 添加成功
 
-  OKMCode [Gemini CLI]
+  okmcode [Gemini CLI]
   https://okmcode.com
 
 ? 是否立即切换到此服务商? (Y(y) / N(n))
@@ -488,9 +524,9 @@ $ aat gm list
 
      官方 Gemini API
 
-  ○  OKMCode
+  ○  okmcode
      https://okmcode.com
-     OKMCode 服务 (Gemini 兼容)
+     okmcode 服务 (Gemini 兼容)
 ```
 
 **use**
@@ -500,11 +536,11 @@ $ aat gm use
 
 ? 选择要切换的服务商:
   Google Gemini (API Key) - (默认端点)
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 ✅ 切换成功
 
-  OKMCode [Gemini CLI]
+  okmcode [Gemini CLI]
   URL: https://okmcode.com
 
 配置已更新:
@@ -530,9 +566,9 @@ $ aat gm edit
 
 ? 选择要编辑的服务商:
   Google Gemini (API Key) - (默认端点)
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
@@ -547,13 +583,13 @@ $ aat gm clone
 
 ? 选择要克隆的服务商:
   Google Gemini (API Key) - (默认端点)
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 ? 输入新服务商名称:
 
 ✅ 克隆成功
 
-  OKMCode（副本） [Gemini CLI]
+  okmcode（副本） [Gemini CLI]
   https://okmcode.com
 ```
 
@@ -564,9 +600,9 @@ $ aat gm remove
 
 ? 选择要删除的服务商:
   Google Gemini (API Key) - (默认端点)
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-? 确定要删除服务商 "OKMCode" 吗？ (Y(y) / N(n))
+? 确定要删除服务商 "okmcode" 吗？ (Y(y) / N(n))
 
 ✅ 已删除服务商
 ```
@@ -585,11 +621,11 @@ $ aat oc add
     ✏️  自定义配置
 
 ? 选择预置服务商:
-  OKMCode - OKMCode 服务 (OpenCode 兼容)
+  okmcode - okmcode 服务 (OpenCode 兼容)
 
-使用预设: OKMCode - OKMCode 服务 (OpenCode 兼容)
+使用预设: okmcode - okmcode 服务 (OpenCode 兼容)
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
@@ -597,7 +633,7 @@ $ aat oc add
 
 ✅ 添加成功
 
-  OKMCode [OpenCode]
+  okmcode [OpenCode]
   https://okmcode.com
 
 ? 是否立即切换到此服务商? (Y(y) / N(n))
@@ -614,9 +650,9 @@ $ aat oc list
 
 📋 OpenCode 服务商 (1 个)
 
-  ●  OKMCode [当前]
+  ●  okmcode [当前]
      https://okmcode.com
-     OKMCode 服务 (OpenCode 兼容)
+     okmcode 服务 (OpenCode 兼容)
 ```
 
 **use**
@@ -625,11 +661,11 @@ $ aat oc list
 $ aat oc use
 
 ? 选择要切换的服务商:
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
 ✅ 切换成功
 
-  OKMCode [OpenCode]
+  okmcode [OpenCode]
   URL: https://okmcode.com
 
 配置已更新:
@@ -643,7 +679,7 @@ $ aat oc current
 
 🎯 当前 OpenCode 服务商
 
-  名称: OKMCode
+  名称: okmcode
   地址: https://okmcode.com
 ```
 
@@ -653,9 +689,9 @@ $ aat oc current
 $ aat oc edit
 
 ? 选择要编辑的服务商:
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-? 服务商名称: OKMCode
+? 服务商名称: okmcode
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
@@ -670,11 +706,11 @@ $ aat oc edit
 $ aat oc clone
 
 ? 选择要克隆的服务商:
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-克隆自: OKMCode
+克隆自: okmcode
 
-? 服务商名称: OKMCode（副本）
+? 服务商名称: okmcode（副本）
 ? 描述(可选):
 ? API 地址: https://okmcode.com
 ? API 密钥: ********
@@ -682,7 +718,7 @@ $ aat oc clone
 
 ✅ 克隆成功
 
-  OKMCode（副本） [OpenCode]
+  okmcode（副本） [OpenCode]
   ID: opencode-1768916088888-copy01
   URL: https://okmcode.com
 ```
@@ -693,11 +729,11 @@ $ aat oc clone
 $ aat oc remove
 
 ? 选择要删除的服务商:
-  OKMCode - https://okmcode.com
+  okmcode - https://okmcode.com
 
-? 确定删除 "OKMCode"? (Y(y) / N(n))
+? 确定删除 "okmcode"? (Y(y) / N(n))
 
-✅ 已删除: OKMCode
+✅ 已删除: okmcode
 ```
 
 ### MCP 管理

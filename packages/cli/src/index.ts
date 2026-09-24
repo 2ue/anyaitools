@@ -14,6 +14,7 @@ import { createSyncCommands, startSyncMenu } from './commands/sync/index.js'
 import { exportCommand } from './commands/export.js'
 import { importCommand } from './commands/import.js'
 import { okmCommand } from './commands/okm.js'
+import { createWebCommand } from './commands/web/index.js'
 import { isRootVersionRequest } from './utils/version-args.js'
 import {
   startMainMenu,
@@ -80,6 +81,7 @@ program.on('command:*', (operands) => {
     'export',
     'import',
     'okm',
+    'web',
   ]
   const suggestions = availableCommands.filter(
     (cmd) => cmd.includes(unknownCommand) || unknownCommand.includes(cmd)
@@ -180,16 +182,18 @@ sync.action(async () => {
 exportCommand(program)
 importCommand(program)
 
-// OKMCode 配置命令（顶层命令）
+// okmcode 配置命令（顶层命令）
 program
   .command('okm [apiKey]')
-  .description('配置 OKMCode 到 Codex、OpenCode、OpenClaw（测速并选择最低延迟路线）')
+  .description('配置 okmcode 到 Codex、OpenCode、OpenClaw（测速并选择最低延迟路线）')
   .option('-p, --platform <platforms>', '指定平台 (codex,opencode,openclaw,all)')
   .option('-n, --name <providerName>', '指定服务商名称（默认: okmcode）')
   .option('-b, --base-url <baseUrl>', '指定 Base URL；不指定时自动测速并可手动切换')
   .action(async (apiKey, options) => {
     await okmCommand(apiKey, options.platform, options.name, options.baseUrl)
   })
+
+program.addCommand(createWebCommand())
 
 // 如果没有提供任何命令,显示 logo 并进入交互模式
 ;(async () => {

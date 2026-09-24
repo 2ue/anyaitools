@@ -84,9 +84,9 @@ export default function CloneMCPModal({
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex max-h-[90vh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Copy className="w-5 h-5 text-blue-600" />
             克隆 MCP 服务器
@@ -96,7 +96,7 @@ export default function CloneMCPModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {/* 源服务器信息 */}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
@@ -135,7 +135,7 @@ export default function CloneMCPModal({
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
           <button
             type="button"
             onClick={onClose}

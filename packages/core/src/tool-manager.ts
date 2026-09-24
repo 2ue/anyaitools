@@ -413,8 +413,12 @@ function createToolManager(tool: ToolType): ToolManager {
         desc: normalizedUpdates.desc ?? provider.desc,
         baseUrl: normalizedUpdates.baseUrl ?? provider.baseUrl,
         apiKey: normalizedUpdates.apiKey ?? provider.apiKey,
-        model: normalizedUpdates.model ?? provider.model,
-        modelConfig: normalizedUpdates.modelConfig ?? provider.modelConfig,
+        model: normalizedUpdates.clearModel
+          ? undefined
+          : (normalizedUpdates.model ?? provider.model),
+        modelConfig: normalizedUpdates.clearModel
+          ? undefined
+          : (normalizedUpdates.modelConfig ?? provider.modelConfig),
         apiBackend: normalizedUpdates.apiBackend ?? provider.apiBackend,
         supportsBackendSearch:
           normalizedUpdates.supportsBackendSearch ?? provider.supportsBackendSearch,
@@ -435,9 +439,14 @@ function createToolManager(tool: ToolType): ToolManager {
       if (normalizedUpdates.desc !== undefined) provider.desc = normalizedUpdates.desc
       if (normalizedUpdates.baseUrl !== undefined) provider.baseUrl = normalizedUpdates.baseUrl
       if (normalizedUpdates.apiKey !== undefined) provider.apiKey = normalizedUpdates.apiKey
-      if (normalizedUpdates.model !== undefined) provider.model = normalizedUpdates.model
-      if (normalizedUpdates.modelConfig !== undefined)
-        provider.modelConfig = normalizedUpdates.modelConfig
+      if (normalizedUpdates.clearModel) {
+        delete provider.model
+        delete provider.modelConfig
+      } else {
+        if (normalizedUpdates.model !== undefined) provider.model = normalizedUpdates.model
+        if (normalizedUpdates.modelConfig !== undefined)
+          provider.modelConfig = normalizedUpdates.modelConfig
+      }
       if (normalizedUpdates.apiBackend !== undefined)
         provider.apiBackend = normalizedUpdates.apiBackend
       if (normalizedUpdates.supportsBackendSearch !== undefined)
@@ -447,14 +456,15 @@ function createToolManager(tool: ToolType): ToolManager {
       saveConfig(config)
 
       try {
+        const writeOptions = normalizedUpdates.clearModel ? { clearModel: true } : {}
         // 如果是当前激活的 provider,重新写入配置
         if (shouldApplyWrite && config.currentProviderId === id) {
-          toolConfig.writer(provider)
+          toolConfig.writer(provider, writeOptions)
         }
 
         // 如果配置了自动同步，则立即同步配置（即使不是当前激活的）
         if (shouldApplyWrite && toolConfig.autoSync) {
-          toolConfig.writer(provider)
+          toolConfig.writer(provider, writeOptions)
         }
       } catch (error) {
         Object.assign(provider, originalProvider)

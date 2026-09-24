@@ -1,13 +1,13 @@
 # @vebing-tools/aicoding
 
-一键配置 OKMCode 到 AI 编程工具（Codex、OpenCode、OpenClaw）。
+一键配置 okmcode 到 AI 编程工具（Codex、OpenCode、OpenClaw）。
 
 ## 当前行为
 
 - **快捷配置入口**：默认按**覆盖写入**处理
 - **默认平台**：`codex` + `opencode`
 - **可选平台**：`openclaw`（默认不选中）
-- **测速选线**：启动时自动测速 OKMCode 候选线路，可手动切换
+- **测速选线**：启动时自动测速 okmcode 候选线路，可手动切换
 - **写前备份**：已有目标文件会先备份，再覆盖写入
 
 这和 `aat okm` 的快捷配置语义保持一致。
@@ -107,11 +107,11 @@ npx @vebing-tools/aicoding sk-ant-xxx --overwrite
 
 | 特性 | `@vebing-tools/aicoding` | `@vebing-tools/anyaitools` |
 | --- | --- | --- |
-| 用途 | 快捷配置 OKMCode | 完整 provider 管理 |
+| 用途 | 快捷配置 okmcode | 完整 provider 管理 |
 | 写入语义 | 快捷覆盖 | 常规管理增量，快捷命令覆盖 |
 | 适用场景 | 快速落配置 | 日常维护、切换 provider |
 
 ## 建议
 
-- 只想快速把 OKMCode 落到工具配置里：用 `@vebing-tools/aicoding`
+- 只想快速把 okmcode 落到工具配置里：用 `@vebing-tools/aicoding`
 - 需要长期维护多个 provider：用 `@vebing-tools/anyaitools`

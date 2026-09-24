@@ -34,6 +34,7 @@ import type {
   MCPImportDuplicateStrategy,
 } from '@anyaitools/types'
 import { McpIcon } from './icons/BrandIcons'
+import SelectMenu from './SelectMenu'
 
 interface Props {
   onImported: (message: string) => void
@@ -385,18 +386,19 @@ export default function MCPRegistryPanel({ onImported, onError, onServersChanged
         <div className="flex items-center gap-2">
           {selectedEntries.length > 0 && (
             <>
-              <select
+              <SelectMenu
                 value={duplicateStrategy}
-                onChange={(event) =>
-                  setDuplicateStrategy(event.target.value as MCPImportDuplicateStrategy)
-                }
-                className="hidden rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 sm:block"
-                aria-label="目录重复名策略"
-              >
-                <option value="rename">重名重命名</option>
-                <option value="skip">重名跳过</option>
-                <option value="overwrite">重名覆盖</option>
-              </select>
+                onChange={(value) => setDuplicateStrategy(value)}
+                className="hidden min-w-[112px] sm:block"
+                buttonClassName="rounded-lg border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:ring-blue-500"
+                menuClassName="text-xs"
+                ariaLabel="目录重复名策略"
+                options={[
+                  { value: 'rename', label: '重名重命名' },
+                  { value: 'skip', label: '重名跳过' },
+                  { value: 'overwrite', label: '重名覆盖' },
+                ]}
+              />
               <button
                 type="button"
                 onClick={() => void importSelected()}
@@ -460,18 +462,17 @@ export default function MCPRegistryPanel({ onImported, onError, onServersChanged
                   placeholder="https://example.com/mcp-registry.json"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                 />
-                <select
+                <SelectMenu
                   value={sourceKind}
-                  onChange={(event) =>
-                    setSourceKind(event.target.value as 'json' | 'github' | 'official-api')
-                  }
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm"
-                  aria-label="目录来源类型"
-                >
-                  <option value="json">JSON 目录</option>
-                  <option value="github">GitHub README</option>
-                  <option value="official-api">官方 Registry API</option>
-                </select>
+                  onChange={(value) => setSourceKind(value)}
+                  ariaLabel="目录来源类型"
+                  buttonClassName="rounded-lg border-slate-200 px-2 py-2 text-sm"
+                  options={[
+                    { value: 'json', label: 'JSON 目录' },
+                    { value: 'github', label: 'GitHub README' },
+                    { value: 'official-api', label: '官方 Registry API' },
+                  ]}
+                />
                 <button
                   type="button"
                   onClick={() => void addSource()}
@@ -787,10 +788,10 @@ export default function MCPRegistryPanel({ onImported, onError, onServersChanged
           onClick={() => setDetailItem(undefined)}
         >
           <div
-            className="w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-xl bg-white shadow-2xl"
+            className="flex max-h-[88vh] min-h-0 w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-semibold text-gray-900">{detailItem.entry.name}</h2>
@@ -822,7 +823,7 @@ export default function MCPRegistryPanel({ onImported, onError, onServersChanged
               </button>
             </div>
 
-            <div className="space-y-5 px-5 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto space-y-5 px-5 py-5">
               <section className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-4">
                 <div className="flex items-start gap-3">
                   <BadgeInfo className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
@@ -916,7 +917,7 @@ export default function MCPRegistryPanel({ onImported, onError, onServersChanged
               </section>
             </div>
 
-            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-5 py-4">
               <span className="text-xs text-gray-500">导入后请在 MCP 卡片上选择要启用的工具。</span>
               <div className="flex gap-2">
                 <button

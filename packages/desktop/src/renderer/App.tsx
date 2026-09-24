@@ -868,46 +868,50 @@ export default function App() {
 
       {/* Edit/Clone Provider Modal */}
       {showEditModal && editingProvider && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              {isCloneMode ? '克隆' : '编辑'}服务商 -{' '}
-              {editingTool === 'claude'
-                ? 'Claude'
-                : editingTool === 'codex'
-                  ? 'Codex'
-                  : editingTool === 'gemini'
-                    ? 'Gemini'
-                    : editingTool === 'opencode'
-                      ? 'OpenCode'
-                      : editingTool === 'openclaw'
-                        ? 'OpenClaw'
-                        : 'Grok Build'}
-            </h2>
-            <ProviderForm
-              provider={editingProvider}
-              isClone={isCloneMode}
-              tool={editingTool}
-              existingProviders={
-                editingTool === 'codex'
-                  ? codexProviders
-                  : editingTool === 'claude'
-                    ? claudeProviders
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="flex max-h-[90vh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="shrink-0 border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {isCloneMode ? '克隆' : '编辑'}服务商 -{' '}
+                {editingTool === 'claude'
+                  ? 'Claude'
+                  : editingTool === 'codex'
+                    ? 'Codex'
                     : editingTool === 'gemini'
-                      ? geminiProviders
+                      ? 'Gemini'
                       : editingTool === 'opencode'
-                        ? opencodeProviders
+                        ? 'OpenCode'
                         : editingTool === 'openclaw'
-                          ? openclawProviders
-                          : grokProviders
-              }
-              onSubmit={handleEditSubmit}
-              onCancel={() => {
-                setShowEditModal(false)
-                setEditingProvider(undefined)
-                setIsCloneMode(false)
-              }}
-            />
+                          ? 'OpenClaw'
+                          : 'Grok Build'}
+              </h2>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <ProviderForm
+                provider={editingProvider}
+                isClone={isCloneMode}
+                tool={editingTool}
+                existingProviders={
+                  editingTool === 'codex'
+                    ? codexProviders
+                    : editingTool === 'claude'
+                      ? claudeProviders
+                      : editingTool === 'gemini'
+                        ? geminiProviders
+                        : editingTool === 'opencode'
+                          ? opencodeProviders
+                          : editingTool === 'openclaw'
+                            ? openclawProviders
+                            : grokProviders
+                }
+                onSubmit={handleEditSubmit}
+                onCancel={() => {
+                  setShowEditModal(false)
+                  setEditingProvider(undefined)
+                  setIsCloneMode(false)
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

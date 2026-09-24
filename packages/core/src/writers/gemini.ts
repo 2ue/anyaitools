@@ -199,7 +199,32 @@ function saveEnvFile(envPath: string, env: Record<string, string>): void {
   fs.renameSync(tempPath, envPath)
 }
 
-function applyGeminiModelConfig(settings: GeminiSettings, provider: Provider): void {
+function applyGeminiModelConfig(
+  settings: GeminiSettings,
+  provider: Provider,
+  clearModel = false
+): void {
+  if (clearModel) {
+    delete settings.model
+    if (isRecord(settings.modelConfigs)) {
+      const modelConfigs = { ...settings.modelConfigs }
+      if (isRecord(modelConfigs.customAliases)) {
+        const customAliases = { ...modelConfigs.customAliases }
+        delete customAliases.anyaitools
+        if (Object.keys(customAliases).length > 0) {
+          modelConfigs.customAliases = customAliases
+        } else {
+          delete modelConfigs.customAliases
+        }
+      }
+      if (Object.keys(modelConfigs).length > 0) {
+        settings.modelConfigs = modelConfigs
+      } else {
+        delete settings.modelConfigs
+      }
+    }
+    return
+  }
   const modelId = resolveProviderModel(provider, '')
   if (modelId) {
     const currentModel =
@@ -310,7 +335,7 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
       ? ({ ...settingsTemplate } as GeminiSettings)
       : deepMerge<GeminiSettings>(settingsTemplate, userSettings)
 
-  applyGeminiModelConfig(settings, provider)
+  applyGeminiModelConfig(settings, provider, options.clearModel)
 
   // 确保启用 IDE 集成
   if (!settings.ide || typeof settings.ide !== 'object') {
@@ -355,12 +380,7 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
     ...existingEnv,
     ...templateEnv,
   }
-  const existingGeminiModel = existingEnv.GEMINI_MODEL
   const selectedModel = resolveProviderModel(provider, '')
-  if (selectedModel) {
-    env.GEMINI_MODEL = selectedModel
-  }
-
   // 模板变量为空时，显式移除对应键
   if (!templateEnv.GOOGLE_GEMINI_BASE_URL) {
     delete env.GOOGLE_GEMINI_BASE_URL
@@ -368,33 +388,43 @@ export function writeGeminiConfig(provider: Provider, options: WriteOptions = {}
   if (!templateEnv.GEMINI_API_KEY) {
     delete env.GEMINI_API_KEY
   }
-  if (!selectedModel && options.mode !== 'overwrite' && existingGeminiModel) {
-    env.GEMINI_MODEL = existingGeminiModel
-  }
 
-  // 解析 provider.model（可能是 JSON 元数据或纯字符串）
-  if (provider.model && !modelMeta) {
-    // 不是 JSON，当作普通模型名称
-    if (!selectedModel) env.GEMINI_MODEL = provider.model
-  }
+  if (options.clearModel) {
+    delete env.GEMINI_MODEL
+  } else {
+    if (selectedModel) {
+      env.GEMINI_MODEL = selectedModel
+    }
 
-  // 如果是 JSON 元数据，合并 env 并处理 fallback
-  if (modelMeta) {
-    // 合并 meta.env 到 .env
-    if (modelMeta.env && typeof modelMeta.env === 'object') {
-      for (const [key, value] of Object.entries(modelMeta.env)) {
-        if (typeof value === 'string') {
-          env[key] = value
+    const existingGeminiModel = existingEnv.GEMINI_MODEL
+    if (!selectedModel && options.mode !== 'overwrite' && existingGeminiModel) {
+      env.GEMINI_MODEL = existingGeminiModel
+    }
+
+    // 解析 provider.model（可能是 JSON 元数据或纯字符串）
+    if (provider.model && !modelMeta) {
+      // 不是 JSON，当作普通模型名称
+      if (!selectedModel) env.GEMINI_MODEL = provider.model
+    }
+
+    // 如果是 JSON 元数据，合并 env 并处理 fallback
+    if (modelMeta) {
+      // 合并 meta.env 到 .env
+      if (modelMeta.env && typeof modelMeta.env === 'object') {
+        for (const [key, value] of Object.entries(modelMeta.env)) {
+          if (typeof value === 'string') {
+            env[key] = value
+          }
         }
       }
-    }
-    // provider 元数据优先于模板默认值；已有用户自定义模型在非覆盖模式下保留
-    if (
-      modelMeta.defaultModel &&
-      !selectedModel &&
-      (!existingGeminiModel || options.mode === 'overwrite')
-    ) {
-      env.GEMINI_MODEL = modelMeta.defaultModel
+      // provider 元数据优先于模板默认值；已有用户自定义模型在非覆盖模式下保留
+      if (
+        modelMeta.defaultModel &&
+        !selectedModel &&
+        (!existingGeminiModel || options.mode === 'overwrite')
+      ) {
+        env.GEMINI_MODEL = modelMeta.defaultModel
+      }
     }
   }
 

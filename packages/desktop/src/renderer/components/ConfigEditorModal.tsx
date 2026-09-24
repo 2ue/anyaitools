@@ -38,7 +38,7 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
 
   useEffect(() => {
     if (show) {
-      setEditedFiles(files.map(f => ({ ...f })))
+      setEditedFiles(files.map((f) => ({ ...f })))
       setActiveTab(0)
       setErrors([])
     }
@@ -68,7 +68,11 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
           const line = lines[i].trim()
           if (line && !line.startsWith('#')) {
             // 检查key=value格式或[section]格式
-            if (!line.match(/^\[.*\]$/) && !line.match(/^[\w\d_-]+\s*=/) && !line.startsWith('[[')) {
+            if (
+              !line.match(/^\[.*\]$/) &&
+              !line.match(/^[\w\d_-]+\s*=/) &&
+              !line.startsWith('[[')
+            ) {
               return `第 ${i + 1} 行：TOML 格式错误`
             }
           }
@@ -98,7 +102,7 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
     const validationErrors = editedFiles.map(validateFile)
     setErrors(validationErrors)
 
-    if (validationErrors.some(err => err !== '')) {
+    if (validationErrors.some((err) => err !== '')) {
       return
     }
 
@@ -121,10 +125,10 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
   const currentFile = editedFiles[activeTab]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex h-[80vh] max-h-[90vh] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
@@ -139,7 +143,7 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
 
         {/* Tabs (if multiple files) */}
         {editedFiles.length > 1 && (
-          <div className="flex border-b border-gray-200 px-6">
+          <div className="flex shrink-0 border-b border-gray-200 px-6">
             {editedFiles.map((file, index) => (
               <button
                 key={index}
@@ -162,14 +166,12 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
         )}
 
         {/* Editor Area */}
-        <div className="flex-1 overflow-hidden flex flex-col p-6">
+        <div className="min-h-0 flex-1 overflow-hidden flex flex-col p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-gray-600">
               文件路径：<span className="font-mono text-xs text-gray-500">{currentFile?.path}</span>
             </div>
-            <div className="text-xs text-gray-500">
-              {currentFile?.language.toUpperCase()} 格式
-            </div>
+            <div className="text-xs text-gray-500">{currentFile?.language.toUpperCase()} 格式</div>
           </div>
 
           <textarea
@@ -188,19 +190,13 @@ export default function ConfigEditorModal({ show, title, files, onSave, onClose 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-          <div className="text-sm text-gray-500">
-            {editedFiles.length} 个配置文件
-          </div>
+        <div className="flex shrink-0 items-center justify-between border-t border-gray-200 px-6 py-4">
+          <div className="text-sm text-gray-500">{editedFiles.length} 个配置文件</div>
           <div className="flex gap-3">
             <button onClick={onClose} className={BUTTON_STYLES.secondary}>
               取消
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className={BUTTON_WITH_ICON.primary}
-            >
+            <button onClick={handleSave} disabled={isSaving} className={BUTTON_WITH_ICON.primary}>
               <Save className="w-4 h-4" />
               {isSaving ? '保存中...' : '保存'}
             </button>

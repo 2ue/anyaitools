@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noImplicitAny": false,
+    "noEmit": true,
+    "allowJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "@anyaitools/types": ["../types/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../desktop/src/vite-env.d.ts",
+    "../desktop/src/renderer/**/*.tsx",
+    "../desktop/src/renderer/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -5,6 +5,7 @@
 | Plan                                             | Status      | Current Phase      | Last Landed                                                        | Next Target                              |
 | ------------------------------------------------ | ----------- | ------------------ | ------------------------------------------------------------------ | ---------------------------------------- |
 | [MCP 管理与目录](plans/mcp-management/README.md) | In Progress | 回归验证与后续扩展 | canonical MCP、工具开关、JSON/Registry、内置来源和桌面端闭环已落地 | 维护来源 schema 兼容性，评估后续宿主适配 |
+| [Web 运行版](plans/web-interface/README.md) | In Progress | 端到端实现 | 需求、共享 UI 方案和 CLI 运行契约已确定 | 实现 Web 构建、HTTP 适配器和 CLI 进程管理 |
 
 ## 阅读顺序
 

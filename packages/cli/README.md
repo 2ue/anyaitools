@@ -97,7 +97,7 @@ $ aat cx list
   ●  OpenAI Official [当前]
      https://api.openai.com/v1
 
-  ○  OKMCode
+  ○  okmcode
      https://okmcode.com
 ```
 
@@ -220,6 +220,43 @@ aat mcp edit     # 编辑 MCP 服务器
 aat mcp remove   # 删除 MCP 服务器
 ```
 
+### 启动 Web 版
+
+Web 版复用 Desktop 的页面和核心配置逻辑，通过 CLI 启动本地 HTTP 服务，适合
+Linux 等只能安装 CLI 的环境。Web 前端会在 CLI 构建时内置到 CLI 包的 `dist/web`，
+不需要额外安装 Web npm 包。默认只监听本机地址；正式使用会按当前环境写入与
+Desktop/CLI 相同的 AnyAI Tools 和目标工具配置。需要隔离预览时，请用临时 `HOME`
+或容器环境启动。
+
+```bash
+# 前台运行（默认，Ctrl+C 停止）
+aat web start
+
+# 指定端口
+aat web start --port 8080
+
+# 绑定局域网地址并启用 token 认证
+aat web start --host 0.0.0.0 --port 8080 --mode daemon --token '随机生成的 token'
+
+# 管理后台服务
+aat web status
+aat web status --json
+aat web restart --port 8080 --mode daemon --token '随机生成的 token'
+aat web stop
+```
+
+`--mode foreground` 是前台模式，日志直接输出到当前终端；`--mode daemon` 是守护进程
+模式，进程脱离当前终端运行。默认 PID 文件和日志文件分别为：
+
+```text
+~/.anyaitools/web-server.pid
+~/.anyaitools/logs/web-server.log
+```
+
+访问 `http://127.0.0.1:3000/` 即可打开 Web 界面。Web 版不显示 Desktop 专属的
+自动更新入口，也不提供原生文件夹选择器；备份、导入和 MCP 目录等能力仍按 Web/API
+支持范围工作。
+
 ---
 
 ## 完整命令
@@ -286,7 +323,7 @@ aat mcp remove   # 删除 MCP 服务器
 
 ```bash
 aat cx add --name work --base-url https://api.example.com --api-key sk-xxx --switch
-aat cc add --preset OKMCode --api-key sk-xxx --switch
+aat cc add --preset okmcode --api-key sk-xxx --switch
 aat gm edit default --new-name personal --base-url '' --api-key ''
 aat oc remove old-provider --yes
 aat gk edit gateway --model new-model --api-backend responses --supports-backend-search
@@ -328,31 +365,31 @@ aat sync upload --yes
 | 预设名称           | Base URL                    |
 | ------------------ | --------------------------- |
 | Anthropic Official | `https://api.anthropic.com` |
-| OKMCode            | `https://okmcode.com`       |
-| OKMCode            | `https://okmcode.com`       |
+| okmcode            | `https://okmcode.com`       |
+| okmcode            | `https://okmcode.com`       |
 
 ### Gemini CLI 预设（3 个）
 
 | 预设名称                | Base URL              |
 | ----------------------- | --------------------- |
 | Google Gemini (API Key) | 官方默认              |
-| OKMCode                 | `https://okmcode.com` |
-| OKMCode                 | `https://okmcode.com` |
+| okmcode                 | `https://okmcode.com` |
+| okmcode                 | `https://okmcode.com` |
 
 ### Codex 预设（3 个）
 
 | 预设名称        | Base URL                    |
 | --------------- | --------------------------- |
 | OpenAI Official | `https://api.openai.com/v1` |
-| OKMCode         | `https://okmcode.com`       |
-| OKMCode         | `https://okmcode.com`       |
+| okmcode         | `https://okmcode.com`       |
+| okmcode         | `https://okmcode.com`       |
 
 ### OpenCode 预设（2 个）
 
 | 预设名称 | Base URL              |
 | -------- | --------------------- |
-| OKMCode  | `https://okmcode.com` |
-| OKMCode  | `https://okmcode.com` |
+| okmcode  | `https://okmcode.com` |
+| okmcode  | `https://okmcode.com` |
 
 ### Grok Build 预设（1 个）
 
@@ -384,25 +421,25 @@ $ aat cx list
   ●  OpenAI Official [当前]
      https://api.openai.com/v1
 
-# 2. 添加 OKMCode（交互式）
+# 2. 添加 okmcode（交互式）
 $ aat cx add
 ? 选择配置方式 › 使用预设模板
-? 选择预设 › OKMCode
-? 服务商名称 › OKMCode
+? 选择预设 › okmcode
+? 服务商名称 › okmcode
 ? API Key › ••••••••••••••••••••
 ✅ 添加成功！
-💡 切换到此服务商: aat cx use OKMCode
+💡 切换到此服务商: aat cx use okmcode
 
-# 3. 切换到 OKMCode
-$ aat cx use OKMCode
-✅ 已切换到: OKMCode
+# 3. 切换到 okmcode
+$ aat cx use okmcode
+✅ 已切换到: okmcode
 
 # 4. 确认当前服务商
 $ aat cx current
 
 📍 当前 Codex 服务商
 
-  OKMCode
+  okmcode
   ID: codex-1760178741529-abc123
   URL: https://okmcode.com
   最后使用: 2025/10/11 18:32:25

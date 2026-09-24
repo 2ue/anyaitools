@@ -346,6 +346,24 @@ function replaceProviderEntry(
   return result
 }
 
+function clearProviderModel(
+  providers: Record<string, unknown> | undefined,
+  providerName: string
+): void {
+  if (!providers) return
+  const target = providerName.toLowerCase()
+  const key = Object.keys(providers).find((item) => item.toLowerCase() === target)
+  if (!key || !isRecord(providers[key])) return
+  delete providers[key].models
+}
+
+function clearAgentModel(config: OpenClawConfigFile): void {
+  const defaults = config.agents?.defaults
+  if (!defaults) return
+  if (isRecord(defaults.model)) delete defaults.model.primary
+  if (isRecord(defaults.imageModel)) delete defaults.imageModel.primary
+}
+
 /**
  * 写入 OpenClaw 配置
  *
@@ -429,6 +447,18 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
           },
         },
       },
+    }
+
+    if (options.clearModel) {
+      const overwriteProviders = isRecord(overwriteConfig.models?.providers)
+        ? (overwriteConfig.models.providers as Record<string, unknown>)
+        : undefined
+      clearProviderModel(overwriteProviders, providerName)
+      const overwriteModelProviders = isRecord(nextModelsConfig.providers)
+        ? (nextModelsConfig.providers as Record<string, unknown>)
+        : undefined
+      clearProviderModel(overwriteModelProviders, providerName)
+      clearAgentModel(overwriteConfig)
     }
 
     writeJSON(configPath, overwriteConfig)
@@ -521,6 +551,18 @@ export function writeOpenClawConfig(provider: Provider, options: WriteOptions = 
         parameters
       )
     ),
+  }
+
+  if (options.clearModel) {
+    const mergedProvidersForClear = isRecord(finalOpenClawConfig.models?.providers)
+      ? (finalOpenClawConfig.models.providers as Record<string, unknown>)
+      : undefined
+    clearProviderModel(mergedProvidersForClear, providerName)
+    const modelProvidersForClear = isRecord(finalModelsConfig.providers)
+      ? (finalModelsConfig.providers as Record<string, unknown>)
+      : undefined
+    clearProviderModel(modelProvidersForClear, providerName)
+    clearAgentModel(finalOpenClawConfig)
   }
 
   writeJSON(configPath, finalOpenClawConfig)

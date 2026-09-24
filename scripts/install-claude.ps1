@@ -105,7 +105,7 @@ switch ($ProfileKey) {
     if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = 'https://api.anthropic.com' }
   }
   'okmcode' {
-    $ProfileTitle = 'OKMCode'
+    $ProfileTitle = 'okmcode'
     if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = 'https://okmcode.com' }
   }
   default {

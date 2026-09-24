@@ -35,5 +35,17 @@ export default defineConfig({
     })
 
     console.log('✅ Templates copied to dist/templates')
+
+    // Web is an internal workspace build artifact. Embed it in the published CLI
+    // so `aat web start` does not require a separate npm package at runtime.
+    const webSource = resolve(__dirname, '../web/dist')
+    const webTarget = resolve(__dirname, 'dist/web')
+
+    cpSync(webSource, webTarget, {
+      recursive: true,
+      force: true,
+    })
+
+    console.log('✅ Web assets copied to dist/web')
   },
 })

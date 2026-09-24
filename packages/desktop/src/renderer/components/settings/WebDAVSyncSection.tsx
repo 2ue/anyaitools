@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import type { SyncConfig, WebDAVAuthType } from '@anyaitools/types'
 import { BUTTON_WITH_ICON } from '../../styles/button'
+import SelectMenu from '../SelectMenu'
 
 interface WebDAVSyncSectionProps {
   onSuccess: (message: string) => void
@@ -231,14 +232,16 @@ export default function WebDAVSyncSection({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">认证类型</label>
-            <select
+            <SelectMenu
               value={authType}
-              onChange={(e) => setAuthType(e.target.value as WebDAVAuthType)}
-              className={inputClass}
-            >
-              <option value="password">Basic Auth</option>
-              <option value="digest">Digest Auth</option>
-            </select>
+              onChange={(value) => setAuthType(value)}
+              ariaLabel="认证类型"
+              buttonClassName={inputClass}
+              options={[
+                { value: 'password', label: 'Basic Auth' },
+                { value: 'digest', label: 'Digest Auth' },
+              ]}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">远程目录</label>

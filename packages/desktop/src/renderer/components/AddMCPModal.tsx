@@ -14,6 +14,7 @@ import type { MCPImportResult, MCPRegistry, MCPServer } from '@anyaitools/types'
 import { MCP_PRESETS_DETAIL, type MCPPresetDetail } from '../constants/mcpPresets'
 import MCPForm from './MCPForm'
 import { AlertDialog } from './dialogs'
+import SelectMenu from './SelectMenu'
 
 interface MCPFormData {
   name: string
@@ -282,11 +283,11 @@ export default function AddMCPModal({
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
-        className={`bg-white rounded-lg shadow-xl w-full ${showCustomForm ? 'max-w-2xl' : 'max-w-4xl'} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`flex max-h-[90vh] min-h-0 w-full flex-col overflow-hidden rounded-lg bg-white shadow-xl ${showCustomForm ? 'max-w-2xl' : 'max-w-4xl'}`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Server className="w-5 h-5 text-blue-600" />
             添加 MCP 服务器
@@ -299,7 +300,7 @@ export default function AddMCPModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {showCustomForm ? (
             <div>
               <button
@@ -376,18 +377,18 @@ export default function AddMCPModal({
                   </div>
                 </div>
               )}
-              <div className="flex items-center justify-between gap-3">
-                <select
+              <div className="sticky bottom-0 z-10 -mx-6 mt-4 flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-6 py-4">
+                <SelectMenu
                   value={duplicateStrategy}
-                  onChange={(event) =>
-                    setDuplicateStrategy(event.target.value as typeof duplicateStrategy)
-                  }
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                >
-                  <option value="rename">重名时重命名</option>
-                  <option value="skip">重名时跳过</option>
-                  <option value="overwrite">重名时覆盖</option>
-                </select>
+                  onChange={(value) => setDuplicateStrategy(value)}
+                  ariaLabel="重复名策略"
+                  buttonClassName="py-2"
+                  options={[
+                    { value: 'rename', label: '重名时重命名' },
+                    { value: 'skip', label: '重名时跳过' },
+                    { value: 'overwrite', label: '重名时覆盖' },
+                  ]}
+                />
                 <button
                   onClick={handleImportJson}
                   disabled={
@@ -500,7 +501,7 @@ export default function AddMCPModal({
                       )
                     })}
                   </div>
-                  <div className="flex justify-end">
+                  <div className="sticky bottom-0 z-10 -mx-6 mt-4 flex justify-end border-t border-gray-200 bg-white px-6 py-4">
                     <button
                       onClick={handleImportRegistry}
                       disabled={selectedRegistryKeys.length === 0}

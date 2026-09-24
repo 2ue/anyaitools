@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OKMCode 配置脚本测试
+ * okmcode 配置脚本测试
  *
  * 测试策略：
  * 1. 使用临时测试目录（不影响正式环境）
@@ -27,7 +27,7 @@ const OKMCODE_BASE_URLS = {
 const TEST_ROOT = path.join(os.tmpdir(), `anyaitools-okmcode-test-${Date.now()}`)
 const TEST_HOME = path.join(TEST_ROOT, 'home')
 
-console.log('🧪 OKMCode 配置脚本测试\n')
+console.log('🧪 okmcode 配置脚本测试\n')
 console.log(`测试目录: ${TEST_ROOT}\n`)
 
 // 确保测试目录存在
@@ -159,7 +159,7 @@ test('Claude 配置应该包含正确的认证信息', () => {
   assert(config.alwaysThinkingEnabled === true, 'Claude extended thinking 未启用')
 })
 
-test('Codex 配置应该包含 OKMCode provider', () => {
+test('Codex 配置应该包含 okmcode provider', () => {
   const config = readTestConfig('codex')
   assert(config.includes('model_provider = "okmcode"'), 'model_provider 不正确')
   assert(config.includes('model = "gpt-5.5"'), 'model 不正确')
@@ -207,10 +207,10 @@ test('Gemini .env 应该包含认证信息', () => {
   assert(env.includes('GEMINI_MODEL=gemini-3.5-flash'), 'Gemini 默认模型不正确')
 })
 
-test('OpenCode 配置应该包含 OKMCode provider', () => {
+test('OpenCode 配置应该包含 okmcode provider', () => {
   const config = readTestConfig('opencode')
   assert(config.model === 'okmcode/gpt-5.5', 'OpenCode 默认模型不正确')
-  assert(config.provider.okmcode.name === 'OKMCode', 'Provider 名称不正确')
+  assert(config.provider.okmcode.name === 'okmcode', 'Provider 名称不正确')
   assert(config.provider.okmcode.options.apiKey === TEST_API_KEY, 'API Key 不正确')
   assert(config.provider.okmcode.options.baseURL === OKMCODE_BASE_URLS.opencode, 'Base URL 不正确')
   assert(config.provider.okmcode.models['gpt-5.5'].options.store === false, '模型 store 不正确')
@@ -334,7 +334,7 @@ test('Codex config.toml 应该备份并覆盖写入', () => {
 test('OpenCode 应该写入托管默认配置', () => {
   const config = readTestConfig('opencode')
   assert(config.provider.other === undefined, '其他 provider 不应保留')
-  assert(config.provider.okmcode, 'OKMCode provider 未添加')
+  assert(config.provider.okmcode, 'okmcode provider 未添加')
   assert(config.model === 'okmcode/gpt-5.5', 'OpenCode 默认模型不正确')
 })
 

@@ -335,6 +335,8 @@ export type UpdateEvent =
   | { type: 'manual-downloaded'; filePath: string }
 
 export interface UpdateAPI {
+  /** Desktop supports in-app update; Web intentionally hides this feature. */
+  supported: boolean
   check: () => Promise<{ started: boolean; error?: string }>
   download: () => Promise<{ ok: boolean; path?: string; manual?: boolean; error?: string }>
   install: (manualPath?: string) => Promise<{ ok: boolean; error?: string }>
@@ -362,6 +364,7 @@ const systemAPI: SystemAPI = {
 }
 
 const updateAPI: UpdateAPI = {
+  supported: true,
   check: () => ipcRenderer.invoke('update:check'),
   download: () => ipcRenderer.invoke('update:download'),
   install: (manualPath?: string) => ipcRenderer.invoke('update:install', { manualPath }),

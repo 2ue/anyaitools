@@ -98,7 +98,15 @@ function loadClaudeTemplateConfig(): ClaudeSettings {
   return CLAUDE_CONFIG_TEMPLATE
 }
 
-function applyClaudeModelConfig(config: ClaudeSettings, provider: Provider): void {
+function applyClaudeModelConfig(
+  config: ClaudeSettings,
+  provider: Provider,
+  clearModel = false
+): void {
+  if (clearModel) {
+    delete config.model
+    return
+  }
   config.model = resolveProviderModel(provider, config.model || 'sonnet')
   const reasoning = resolveProviderReasoning(provider)
   if (reasoning?.mode === 'effort' && typeof reasoning.value === 'string') {
@@ -145,7 +153,7 @@ export function writeClaudeConfig(provider: Provider, options: WriteOptions = {}
   }) as ClaudeSettings
 
   if (options.mode === 'overwrite') {
-    applyClaudeModelConfig(defaultConfig, provider)
+    applyClaudeModelConfig(defaultConfig, provider, options.clearModel)
     fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), { mode: 0o600 })
     return
   }
@@ -161,7 +169,7 @@ export function writeClaudeConfig(provider: Provider, options: WriteOptions = {}
   const mergedConfig = deepMerge<ClaudeSettings>(defaultConfig, userConfig)
 
   // 4. 强制更新认证字段为最新值
-  applyClaudeModelConfig(mergedConfig, provider)
+  applyClaudeModelConfig(mergedConfig, provider, options.clearModel)
   mergedConfig.env = mergedConfig.env || {}
   mergedConfig.env.ANTHROPIC_AUTH_TOKEN = provider.apiKey
   mergedConfig.env.ANTHROPIC_BASE_URL = provider.baseUrl

@@ -162,6 +162,7 @@ export interface EditProviderInput {
   apiKey?: string
   model?: string
   modelConfig?: ToolModelConfig
+  clearModel?: boolean
   apiBackend?: ApiBackend
   supportsBackendSearch?: boolean
 }

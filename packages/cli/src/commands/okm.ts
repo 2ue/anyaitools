@@ -163,7 +163,7 @@ async function promptPlatforms(title: string): Promise<Platform[]> {
   return selected as Platform[]
 }
 
-async function resolvePlatforms(platformArg?: string, title = 'OKMCode'): Promise<Platform[]> {
+async function resolvePlatforms(platformArg?: string, title = 'okmcode'): Promise<Platform[]> {
   if (platformArg && platformArg.trim().length > 0) {
     return parsePlatforms(platformArg)
   }
@@ -289,8 +289,8 @@ function resolveProviderName(profile: OkmcodeProfile, providerNameArg?: string):
     throw new Error('服务商名称不能为空')
   }
 
-  // 默认内置 provider 统一使用小写 okmcode
-  if (providerName.toLowerCase() === profile.defaultProviderName) {
+  // 内置 provider 统一使用小写；输入仍大小写不敏感。
+  if (providerName.toLowerCase() === profile.defaultProviderName.toLowerCase()) {
     return profile.defaultProviderName
   }
 

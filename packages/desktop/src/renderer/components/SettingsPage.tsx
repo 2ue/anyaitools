@@ -21,6 +21,7 @@ type SettingSection = 'sync' | 'backup' | 'update'
 export default function SettingsPage({ onSuccess, onError, onDataChanged }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState<SettingSection>('sync')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const updateSupported = window.electronAPI.update?.supported !== false
 
   const sections = [
     {
@@ -35,12 +36,16 @@ export default function SettingsPage({ onSuccess, onError, onDataChanged }: Sett
       icon: HardDrive,
       description: '导入/导出配置',
     },
-    {
-      id: 'update' as const,
-      name: '更新',
-      icon: DownloadCloud,
-      description: '检查并自动下载更新',
-    },
+    ...(updateSupported
+      ? [
+          {
+            id: 'update' as const,
+            name: '更新',
+            icon: DownloadCloud,
+            description: '检查并自动下载更新',
+          },
+        ]
+      : []),
   ]
 
   const handleSectionChange = (section: SettingSection) => {

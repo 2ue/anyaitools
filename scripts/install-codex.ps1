@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $ProfileKey = 'okmcode'
-$ProfileTitle = 'OKMCode'
+$ProfileTitle = 'okmcode'
 $ProviderName = ''
 $BaseUrl = ''
 $ApiKey = ''
@@ -101,7 +101,7 @@ for ($index = 0; $index -lt $CliArgs.Count; $index += 1) {
 
 switch ($ProfileKey) {
   'okmcode' {
-    $ProfileTitle = 'OKMCode'
+    $ProfileTitle = 'okmcode'
     if ([string]::IsNullOrWhiteSpace($ProviderName)) { $ProviderName = 'okmcode' }
     if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = 'https://okmcode.com' }
   }

@@ -42,9 +42,9 @@ export default function PromptDialog({
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex max-h-[90vh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <button
             onClick={onCancel}
@@ -54,20 +54,22 @@ export default function PromptDialog({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <p className="text-sm text-gray-600 mb-4">{message}</p>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <p className="text-sm text-gray-600 mb-4">{message}</p>
 
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={placeholder}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-            required
-          />
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+              required
+            />
+          </div>
 
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 px-6 py-4">
             <button
               type="button"
               onClick={onCancel}

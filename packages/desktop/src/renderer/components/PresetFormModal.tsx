@@ -133,9 +133,9 @@ export default function PresetFormModal({
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex max-h-[90vh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {preset ? '编辑预置服务商' : '添加预置服务商'} - {TOOL_CONFIG[type].displayName}
           </h2>
@@ -144,7 +144,7 @@ export default function PresetFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">服务商名称</label>
             <input
@@ -291,7 +291,7 @@ export default function PresetFormModal({
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="sticky bottom-0 z-10 -mx-6 mt-6 flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
             <button
               type="button"
               onClick={onClose}

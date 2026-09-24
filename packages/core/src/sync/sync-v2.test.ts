@@ -48,7 +48,7 @@ describe('sync-v2', () => {
           providers: [
             {
               id: 'openclaw-1',
-              name: 'OKMCode',
+              name: 'okmcode',
               baseUrl: 'https://okmcode.com/v1',
               apiKey: 'sk-sync-openclaw',
               createdAt: Date.now(),

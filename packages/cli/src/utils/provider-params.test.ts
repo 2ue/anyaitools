@@ -5,9 +5,9 @@ import { resolveProviderAddInput, resolveProviderEditInput } from './provider-pa
 
 const presets = [
   {
-    name: 'OKMCode',
+    name: 'okmcode',
     baseUrl: 'https://okmcode.com',
-    description: 'OKMCode 主站',
+    description: 'okmcode 主站',
     isBuiltIn: true,
   },
 ]
@@ -25,7 +25,7 @@ test('resolveProviderAddInput should build non-interactive preset input', () => 
   assert.equal(resolved.nonInteractive, true)
   assert.equal(resolved.switchNow, true)
   assert.deepEqual(resolved.input, {
-    name: 'OKMCode',
+    name: 'okmcode',
     desc: undefined,
     baseUrl: 'https://okmcode.com',
     apiKey: 'sk-test',

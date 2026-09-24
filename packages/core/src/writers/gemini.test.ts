@@ -31,10 +31,10 @@ describe('Gemini Writer', () => {
     }
   })
 
-  it('should create new settings.json and .env for OKMCode provider', () => {
+  it('should create new settings.json and .env for okmcode provider', () => {
     const provider: Provider = {
       id: 'gemini-1',
-      name: 'OKMCode',
+      name: 'okmcode',
       baseUrl: 'https://okmcode.com',
       apiKey: 'sk-test-123',
       createdAt: Date.now(),
@@ -197,7 +197,7 @@ describe('Gemini Writer', () => {
 
     const provider: Provider = {
       id: 'gemini-4',
-      name: 'OKMCode',
+      name: 'okmcode',
       baseUrl: 'https://okmcode.com',
       apiKey: 'sk-new',
       createdAt: Date.now(),
@@ -301,7 +301,7 @@ describe('Gemini Writer', () => {
 
     const provider: Provider = {
       id: 'gemini-overwrite',
-      name: 'OKMCode',
+      name: 'okmcode',
       baseUrl: 'https://okmcode.com',
       apiKey: 'sk-overwrite',
       createdAt: Date.now(),

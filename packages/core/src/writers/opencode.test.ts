@@ -32,7 +32,7 @@ describe('OpenCode Writer', () => {
       const now = Date.now()
       const provider = {
         id: 'test-id',
-        name: 'OKMCode',
+        name: 'okmcode',
         baseUrl: 'https://okmcode.com',
         apiKey: 'test-api-key-123',
         createdAt: now,
@@ -192,6 +192,57 @@ describe('OpenCode Writer', () => {
       expect(nextConfig.model).toBe('openai/gpt-5.5')
       expect(nextConfig.provider.openai.models['gpt-5.5'].options.store).toBe(false)
       expect(nextConfig.provider.openai.models['gpt-5.3-codex']).toBeUndefined()
+    })
+
+    it('should remove the selected model and agent overrides when clearModel is requested', () => {
+      const configPath = getOpenCodeConfigPath()
+      fs.mkdirSync(path.dirname(configPath), { recursive: true })
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            $schema: 'https://opencode.ai/config.json',
+            model: 'openai/legacy-model',
+            agent: {
+              build: { model: 'openai/legacy-model#high' },
+              plan: { model: 'openai/legacy-model#high' },
+            },
+            provider: {
+              openai: {
+                models: {
+                  'legacy-model': {
+                    variants: { high: {} },
+                  },
+                },
+              },
+            },
+          },
+          null,
+          2
+        ),
+        'utf-8'
+      )
+
+      writeOpenCodeConfig(
+        {
+          id: 'clear-model-id',
+          name: 'Clear Model',
+          baseUrl: 'https://example.com/v1',
+          apiKey: 'test-key',
+          model: 'legacy-model',
+          modelConfig: {
+            modelId: 'legacy-model',
+            variant: 'high',
+          },
+          createdAt: Date.now(),
+        },
+        { clearModel: true }
+      )
+
+      const nextConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+      expect(nextConfig.model).toBeUndefined()
+      expect(nextConfig.agent.build.model).toBeUndefined()
+      expect(nextConfig.agent.plan.model).toBeUndefined()
     })
   })
 })

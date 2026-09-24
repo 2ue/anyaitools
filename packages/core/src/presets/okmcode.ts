@@ -13,9 +13,9 @@ export function createOkmcodePresets(
 ): OkmcodePresetTemplate[] {
   return [
     {
-      name: 'OKMCode',
+      name: 'okmcode',
       baseUrl: transformBaseUrl(OKMCODE_ROOT_URL),
-      description: 'OKMCode 官方线路 (okmcode.com)',
+      description: 'okmcode 官方线路 (okmcode.com)',
     },
   ]
 }
