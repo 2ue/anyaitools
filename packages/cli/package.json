@@ -1,6 +1,6 @@
 {
   "name": "@vebing-tools/anyaitools",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "description": "CLI for the Any AI Tools workspace, managing and syncing configs across Codex, Claude Code, Gemini CLI, OpenCode, OpenClaw, Grok Build, and MCP",
   "main": "./dist/index.js",

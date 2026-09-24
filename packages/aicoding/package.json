@@ -1,6 +1,6 @@
 {
   "name": "@vebing-tools/aicoding",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "一键配置 okmcode 到 Codex、OpenCode、OpenClaw",
   "type": "module",
   "bin": {
